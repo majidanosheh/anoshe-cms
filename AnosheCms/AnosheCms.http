@@ -1,0 +1,6 @@
+@AnosheCms_HostAddress = http://localhost:5009
+
+GET {{AnosheCms_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

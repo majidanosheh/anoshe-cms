@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    // --- پروفایل IIS Express به طور کامل حذف شد ---
+
+    // --- این تنها پروفایل باقی‌مانده است ---
+    "AnosheCms.Api": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      // --- اطمینان از اینکه فقط HTTP وجود دارد ---
+      "applicationUrl": "http://localhost:56006",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
