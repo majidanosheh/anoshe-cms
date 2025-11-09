@@ -1,0 +1,102 @@
+﻿// File: AnosheCms.Infrastructure/Services/NavigationService.cs
+using AnosheCms.Application.DTOs.Navigation;
+using AnosheCms.Application.Interfaces;
+using AnosheCms.Domain.Entities;
+using AnosheCms.Infrastructure.Persistence.Data;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace AnosheCms.Infrastructure.Services
+{
+    public class NavigationService : INavigationService
+    {
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ApplicationDbContext _context;
+
+        public NavigationService(
+            IHttpContextAccessor httpContextAccessor,
+            UserManager<ApplicationUser> userManager,
+            ApplicationDbContext context)
+        {
+            _httpContextAccessor = httpContextAccessor;
+            _userManager = userManager;
+            _context = context;
+        }
+
+        public async Task<List<MenuGroupDto>> GetAdminMenuAsync()
+        {
+            var userPrincipal = _httpContextAccessor.HttpContext?.User;
+            if (userPrincipal == null)
+            {
+                return new List<MenuGroupDto>(); // (بدون کاربر، بدون منو)
+            }
+
+            var menu = new List<MenuGroupDto>();
+
+            // --- گروه ۱: اصلی ---
+            var mainGroup = new MenuGroupDto { Title = "اصلی" };
+            mainGroup.Items.Add(new MenuItemDto { Title = "داشبورد", Icon = "mdi-av-timer", RouteName = "admin-dashboard" });
+            mainGroup.Items.Add(new MenuItemDto { Title = "کتابخانه رسانه", Icon = "mdi-folder-multiple-image", RouteName = "admin-media" });
+            menu.Add(mainGroup);
+
+            // --- گروه ۲: محتوا (داینامیک از دیتابیس) ---
+            // (در آینده، این بخش نیز باید بر اساس دسترسی‌ها فیلتر شود)
+            var contentGroup = new MenuGroupDto { Title = "محتوا" };
+            var contentTypes = await _context.ContentTypes
+                .AsNoTracking()
+                .OrderBy(ct => ct.Name)
+                .Select(ct => new MenuItemDto
+                {
+                    Title = ct.Name,
+                    Icon = "mdi-file-document-box",
+                    RouteName = "admin-content-list",
+                    RouteParams = new Dictionary<string, string> { { "apiSlug", ct.ApiSlug } }
+                })
+                .ToListAsync();
+
+            contentGroup.Items.AddRange(contentTypes);
+            if (contentGroup.Items.Any())
+            {
+                menu.Add(contentGroup);
+            }
+
+            // --- گروه ۳: ساختار (بررسی رول) ---
+            var structureGroup = new MenuGroupDto { Title = "ساختار" };
+
+            // (بررسی رول "Admin" یا "SuperAdmin")
+            if (userPrincipal.IsInRole("Admin") || userPrincipal.IsInRole("SuperAdmin"))
+            {
+                structureGroup.Items.Add(new MenuItemDto { Title = "انواع محتوا", Icon = "mdi-pencil-box-outline", RouteName = "admin-content-types" });
+                structureGroup.Items.Add(new MenuItemDto { Title = "تنظیمات سراسری", Icon = "mdi-settings", RouteName = "admin-settings" });
+            }
+
+            if (structureGroup.Items.Any())
+            {
+                menu.Add(structureGroup);
+            }
+
+            // --- گروه ۴: مدیریت (فقط SuperAdmin) ---
+            var managementGroup = new MenuGroupDto { Title = "مدیریت" };
+
+            // (بررسی رول "SuperAdmin")
+            if (userPrincipal.IsInRole("SuperAdmin"))
+            {
+                managementGroup.Items.Add(new MenuItemDto { Title = "مدیریت کاربران", Icon = "mdi-account-multiple", RouteName = "admin-users" });
+                managementGroup.Items.Add(new MenuItemDto { Title = "نقش‌ها و دسترسی‌ها", Icon = "mdi-account-key", RouteName = "admin-roles" });
+            }
+
+            if (managementGroup.Items.Any())
+            {
+                menu.Add(managementGroup);
+            }
+
+            return menu;
+        }
+    }
+}

@@ -1,11 +1,8 @@
 ﻿// File: AnosheCms.Infrastructure/Services/CurrentUserService.cs
-
-// --- شروع Using Directives ---
 using AnosheCms.Application.Interfaces;
 using Microsoft.AspNetCore.Http;
-using System; // برای Guid.Parse
+using System;
 using System.Security.Claims;
-// --- پایان Using Directives ---
 
 namespace AnosheCms.Infrastructure.Services
 {
@@ -22,18 +19,38 @@ namespace AnosheCms.Infrastructure.Services
         {
             get
             {
-                // ما Claim "uid" را در زمان ساخت توکن (در AuthService) اضافه کردیم
-                var claim = _httpContextAccessor.HttpContext?.User?.FindFirstValue("uid");
-                return claim != null ? Guid.Parse(claim) : null;
+                var principal = _httpContextAccessor.HttpContext?.User;
+                if (principal == null)
+                    return null;
+
+                var userIdClaim = principal.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                                  principal.FindFirstValue("sub");
+
+                if (userIdClaim == null)
+                    return null;
+
+                if (Guid.TryParse(userIdClaim, out Guid userId))
+                {
+                    return userId;
+                }
+
+                return null;
             }
         }
 
-        public string? UserEmail
+        public string RemoteIpAddress
         {
             get
             {
-                // این یک Claim استاندارد است
-                return _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.Email);
+                return _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString();
+            }
+        }
+
+        public string UserAgent
+        {
+            get
+            {
+                return _httpContextAccessor.HttpContext?.Request?.Headers["User-Agent"].ToString();
             }
         }
     }

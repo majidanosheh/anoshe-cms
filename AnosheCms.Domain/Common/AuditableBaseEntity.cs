@@ -1,15 +1,22 @@
-﻿namespace AnosheCms.Domain.Common
+﻿// File: AnosheCms.Domain/Common/AuditableBaseEntity.cs
+using AnosheCms.Domain.Common;
+using System;
+
+namespace AnosheCms.Domain.Common
 {
-    /// <summary>
-    /// کلاس پایه برای تمام موجودیت‌های غیر Identity که Auditable هستند.
-    /// </summary>
-    public abstract class AuditableBaseEntity : IAuditable
+    public abstract class AuditableBaseEntity : IAuditable, ISoftDelete
     {
-        public Guid Id { get; set; } = Guid.NewGuid();
-        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
-        public string? CreatedBy { get; set; }
+        public Guid Id { get; set; }
+
+        // --- IAuditable ---
+        public DateTime CreatedDate { get; set; }
+        public Guid? CreatedBy { get; set; }
         public DateTime? LastModifiedDate { get; set; }
-        public string? LastModifiedBy { get; set; }
-        public bool IsDeleted { get; set; } = false;
+        public Guid? LastModifiedBy { get; set; }
+
+        // --- ISoftDelete ---
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletedDate { get; set; }
+        public Guid? DeletedBy { get; set; }
     }
 }

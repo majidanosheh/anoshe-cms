@@ -1,16 +1,16 @@
 ﻿// File: AnosheCms.Application/Interfaces/IAuthService.cs
-using System.Threading.Tasks; // <-- اطمینان از وجود Task
+using AnosheCms.Application.DTOs.Auth;
+using System.Threading.Tasks;
 
 namespace AnosheCms.Application.Interfaces
 {
-    // DTOs (Data Transfer Objects)
-    public record AuthRequest(string Email, string Password);
-    public record AuthResponse(bool Succeeded, string Token = "", string ErrorMessage = "");
-    public record RegisterRequest(string FirstName, string LastName, string Email, string Password);
-
     public interface IAuthService
     {
-        Task<AuthResponse> LoginAsync(AuthRequest request);
-        Task<AuthResponse> RegisterAsync(RegisterRequest request);
+        Task<AuthenticationResult> LoginAsync(LoginRequest request, string ipAddress, string userAgent);
+        Task<AuthenticationResult> RefreshTokenAsync(TokenRequest request, string ipAddress, string userAgent);
+        Task<bool> RevokeTokenAsync(string token, string ipAddress, string userAgent);
+
+        // (ما RegisterAsync را بعداً اضافه خواهیم کرد، فعلاً روی لاگین تمرکز می‌کنیم)
+        // Task<AuthenticationResult> RegisterAsync(RegisterRequest request, string origin);
     }
 }

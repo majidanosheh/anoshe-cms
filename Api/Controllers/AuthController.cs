@@ -1,10 +1,10 @@
-﻿// File: AnosheCms.Api/Controllers/AuthController.cs
-
-// --- شروع Using Directives ---
-using AnosheCms.Application.Interfaces; // <-- حیاتی: برای IAuthService و DTOs
+﻿// File: Api/Controllers/AuthController.cs
+using AnosheCms.Application.DTOs.Auth;
+using AnosheCms.Application.Interfaces;
+using Azure.Core;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks; // برای Task
-// --- پایان Using Directives ---
+using System.Threading.Tasks;
 
 namespace AnosheCms.Api.Controllers
 {
@@ -13,32 +13,53 @@ namespace AnosheCms.Api.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly ICurrentUserService _currentUserService; // (برای IP و UserAgent)
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, ICurrentUserService currentUserService)
         {
             _authService = authService;
+            _currentUserService = currentUserService;
         }
 
+        // POST: api/auth/login
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] AuthRequest request)
+        [AllowAnonymous]
+        public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            var result = await _authService.LoginAsync(request);
+            var result = await _authService.LoginAsync(
+                request,
+                _currentUserService.RemoteIpAddress,
+                _currentUserService.UserAgent
+            );
+
             if (!result.Succeeded)
             {
-                return Unauthorized(new { message = result.ErrorMessage });
+                return Unauthorized(new { Errors = result.Errors });
             }
-            return Ok(new { token = result.Token });
+
+            return Ok(result);
         }
 
-        [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+        // POST: api/auth/refresh
+        [HttpPost("refresh")]
+        [AllowAnonymous]
+        public async Task<IActionResult> RefreshToken([FromBody] TokenRequest request)
         {
-            var result = await _authService.RegisterAsync(request);
+            var result = await _authService.RefreshTokenAsync(
+                request,
+                _currentUserService.RemoteIpAddress,
+                _currentUserService.UserAgent
+            );
+
             if (!result.Succeeded)
             {
-                return BadRequest(new { message = result.ErrorMessage });
+                return Unauthorized(new { Errors = result.Errors
+    });
             }
-            return Ok(new { message = "User registered successfully. Please login." });
+
+return Ok(result);
         }
+
+        // (توجه: متد Register حذف شد، زیرا IAuthService جدید فعلاً آن را ندارد)
     }
 }

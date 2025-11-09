@@ -1,118 +1,184 @@
 ﻿// File: AnosheCms.Infrastructure/Services/AuthService.cs
-
-// --- شروع Using Directives ---
-using AnosheCms.Application.Interfaces; // <-- حیاتی: برای IAuthService
+using AnosheCms.Application.DTOs.Auth;
+using AnosheCms.Application.Interfaces;
 using AnosheCms.Domain.Entities;
+using AnosheCms.Infrastructure.Persistence.Data;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Tokens;
-using System; // برای DateTime, Convert, InvalidOperationException
-using System.Collections.Generic; // برای List
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration; // (برای IConfiguration)
+using System;
+using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
-using System.Linq; // برای .Select
+using System.Linq;
 using System.Security.Claims;
-using System.Text;
-using System.Threading.Tasks; // برای Task
-// --- پایان Using Directives ---
+using System.Threading.Tasks;
 
 namespace AnosheCms.Infrastructure.Services
 {
-    // --- اطمینان از پیاده‌سازی اینترفیس ---
     public class AuthService : IAuthService
     {
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly IConfiguration _configuration;
+        private readonly ITokenService _tokenService;
+        private readonly ApplicationDbContext _context;
+        private readonly IConfiguration _config;
 
-        public AuthService(UserManager<ApplicationUser> userManager, IConfiguration configuration)
+        public AuthService(
+            UserManager<ApplicationUser> userManager,
+            ITokenService tokenService,
+            ApplicationDbContext context,
+            IConfiguration config)
         {
             _userManager = userManager;
-            _configuration = configuration;
+            _tokenService = tokenService;
+            _context = context;
+            _config = config;
         }
 
-        public async Task<AuthResponse> LoginAsync(AuthRequest request)
+        public async Task<AuthenticationResult> LoginAsync(LoginRequest request, string ipAddress, string userAgent)
         {
             var user = await _userManager.FindByEmailAsync(request.Email);
-            if (user == null || !await _userManager.CheckPasswordAsync(user, request.Password))
+            if (user == null || !user.IsActive || user.IsDeleted)
             {
-                return new AuthResponse(false, ErrorMessage: "Invalid email or password.");
+                return FailResult("ایمیل یا رمز عبور نامعتبر است.");
             }
 
-            if (!user.IsActive || user.IsDeleted)
+            var result = await _userManager.CheckPasswordAsync(user, request.Password);
+            if (!result)
             {
-                return new AuthResponse(false, ErrorMessage: "User account is inactive.");
+                await LogLoginHistory(user.Id, ipAddress, userAgent, false, "Invalid password");
+                return FailResult("ایمیل یا رمز عبور نامعتبر است.");
             }
 
             user.LastLoginDate = DateTime.UtcNow;
             await _userManager.UpdateAsync(user);
 
-            // GenerateJwtToken اکنون async است چون نقش‌ها را می‌خواند
-            var token = await GenerateJwtToken(user);
-            return new AuthResponse(true, Token: token);
+            var (accessToken, refreshToken, jwtId) = await _tokenService.GenerateTokensAsync(user, ipAddress, userAgent);
+
+            // --- (این فراخوانی باعث خطا شده بود) ---
+            await LogLoginHistory(user.Id, ipAddress, userAgent, true, null); // (ارسال null)
+            await CreateSession(user.Id, jwtId.ToString(), refreshToken, ipAddress, userAgent);
+
+            return await SuccessResult(user, accessToken, refreshToken);
         }
 
-        public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
+        public async Task<AuthenticationResult> RefreshTokenAsync(TokenRequest request, string ipAddress, string userAgent)
         {
-            var existingUser = await _userManager.FindByEmailAsync(request.Email);
-            if (existingUser != null)
+            var principal = _tokenService.GetPrincipalFromExpiredToken(request.Token);
+            if (principal == null)
             {
-                return new AuthResponse(false, ErrorMessage: "Email already in use.");
+                return FailResult("توکن نامعتبر است.");
             }
 
-            var newUser = new ApplicationUser
+            var jti = principal.Claims.SingleOrDefault(x => x.Type == JwtRegisteredClaimNames.Jti)?.Value;
+            if (jti == null)
             {
-                FirstName = request.FirstName,
-                LastName = request.LastName,
-                Email = request.Email,
-                UserName = request.Email,
-                IsActive = true
-            };
-
-            var result = await _userManager.CreateAsync(newUser, request.Password);
-
-            if (!result.Succeeded)
-            {
-                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                return new AuthResponse(false, ErrorMessage: errors);
+                return FailResult("JTI (شناسه توکن) یافت نشد.");
             }
 
-            // TODO: اختصاص نقش پیش‌فرض به کاربر (مثلاً "User")
-            // await _userManager.AddToRoleAsync(newUser, "User");
+            var storedRefreshToken = await _context.RefreshTokens
+                .FirstOrDefaultAsync(x => x.Token == request.RefreshToken);
 
-            return new AuthResponse(true);
+            if (storedRefreshToken == null)
+                return FailResult("Refresh token وجود ندارد.");
+            if (DateTime.UtcNow > storedRefreshToken.ExpiryDate)
+                return FailResult("Refresh token منقضی شده است.");
+            if (storedRefreshToken.IsRevoked)
+                return FailResult("Refresh token باطل شده است.");
+            if (storedRefreshToken.IsUsed)
+                return FailResult("Refresh token قبلاً استفاده شده است.");
+            if (storedRefreshToken.JwtId != jti)
+                return FailResult("توکن‌ها با هم مطابقت ندارند.");
+
+            storedRefreshToken.IsUsed = true;
+            _context.RefreshTokens.Update(storedRefreshToken);
+            await _context.SaveChangesAsync();
+
+            var user = await _userManager.FindByIdAsync(principal.Claims.Single(x => x.Type == ClaimTypes.NameIdentifier).Value);
+
+            var (accessToken, newRefreshToken, newJwtId) = await _tokenService.GenerateTokensAsync(user, ipAddress, userAgent);
+
+            await CreateSession(user.Id, newJwtId.ToString(), newRefreshToken, ipAddress, userAgent);
+
+            return await SuccessResult(user, accessToken, newRefreshToken);
         }
 
-        // --- متد اصلاح شده برای خواندن نقش‌ها ---
-        private async Task<string> GenerateJwtToken(ApplicationUser user)
+        public async Task<bool> RevokeTokenAsync(string token, string ipAddress, string userAgent)
         {
-            var claims = new List<Claim>
-            {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                new Claim(JwtRegisteredClaimNames.GivenName, user.FirstName),
-                new Claim("uid", user.Id.ToString())
-            };
+            var refreshToken = await _context.RefreshTokens.FirstOrDefaultAsync(x => x.Token == token);
+            if (refreshToken == null || refreshToken.IsRevoked)
+                return false;
 
-            // --- (جدید) افزودن نقش‌های کاربر به Claims ---
+            refreshToken.IsRevoked = true;
+            var session = await _context.UserSessions.FirstOrDefaultAsync(s => s.RefreshToken == token);
+            if (session != null)
+            {
+                session.IsActive = false;
+                session.ExpiresAt = DateTime.UtcNow;
+            }
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        // --- متدهای کمکی (Helper Methods) ---
+
+        private async Task LogLoginHistory(Guid userId, string ipAddress, string userAgent, bool isSuccessful, string failureReason)
+        {
+            var history = new UserLoginHistory
+            {
+                UserId = userId,
+                IpAddress = ipAddress,
+                UserAgent = userAgent,
+                IsSuccessful = isSuccessful,
+                // ---*** (تصحیح شد: اطمینان از عدم وجود null) ***---
+                FailureReason = failureReason ?? string.Empty,
+                Browser = "Unknown",
+                OS = "Unknown",
+                Device = "Unknown"
+            };
+            await _context.UserLoginHistories.AddAsync(history);
+            await _context.SaveChangesAsync(); // (این خطی بود که خطا می‌داد)
+        }
+
+        private async Task CreateSession(Guid userId, string jwtId, string refreshToken, string ipAddress, string userAgent)
+        {
+            var session = new UserSession
+            {
+                UserId = userId,
+                SessionId = jwtId,
+                RefreshToken = refreshToken,
+                IpAddress = ipAddress,
+                UserAgent = userAgent,
+                IsActive = true,
+                LastActivityAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.Add(TimeSpan.FromDays(Convert.ToDouble(_config["JwtSettings:RefreshTokenLifetimeDays"] ?? "7")))
+            };
+            await _context.UserSessions.AddAsync(session);
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task<AuthenticationResult> SuccessResult(ApplicationUser user, string accessToken, string refreshToken)
+        {
             var roles = await _userManager.GetRolesAsync(user);
-            claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
-            // --- پایان بخش جدید ---
+            return new AuthenticationResult
+            {
+                Succeeded = true,
+                Token = accessToken,
+                RefreshToken = refreshToken,
+                UserId = user.Id,
+                Email = user.Email,
+                FullName = $"{user.FirstName} {user.LastName}",
+                Roles = roles.ToList()
+            };
+        }
 
-            var secretKey = _configuration["JwtSettings:Secret"]
-                ?? throw new InvalidOperationException("JWT Secret key is not configured in user-secrets.");
-
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-            var expires = DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["JwtSettings:DurationInMinutes"] ?? "60"));
-
-            var token = new JwtSecurityToken(
-                issuer: _configuration["JwtSettings:Issuer"],
-                audience: _configuration["JwtSettings:Audience"],
-                claims: claims,
-                expires: expires,
-                signingCredentials: creds
-            );
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
+        private AuthenticationResult FailResult(string error)
+        {
+            return new AuthenticationResult
+            {
+                Succeeded = false,
+                Errors = new[] { error }
+            };
         }
     }
 }

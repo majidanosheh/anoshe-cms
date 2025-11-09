@@ -1,21 +1,31 @@
-﻿using AnosheCms.Domain.Common;
+// File: AnosheCms.Domain/Entities/ApplicationRole.cs
 using Microsoft.AspNetCore.Identity;
-using AnosheCms.Domain.Common; // اضافه شدن using
+using System;
+using System.Collections.Generic;
+using AnosheCms.Domain.Common;
 
 namespace AnosheCms.Domain.Entities
 {
-    /// <summary>
-    /// گسترش IdentityRole و پیاده‌سازی IAuditable
-    /// </summary>
-    public class ApplicationRole : IdentityRole<Guid>, IAuditable
+    public class ApplicationRole : IdentityRole<Guid>, ISoftDelete, IAuditable // (اطمینان از پیاده‌سازی اینترفیس‌ها)
     {
+        // --- (تصحیح شد: string به string? تغییر کرد) ---
         public string? Description { get; set; }
 
-        // پیاده‌سازی فیلدهای IAuditable
+        public string DisplayName { get; set; }
+        public bool IsSystemRole { get; set; }
+
+        // --- IAuditable ---
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
-        public string? CreatedBy { get; set; }
+        public Guid? CreatedBy { get; set; }
         public DateTime? LastModifiedDate { get; set; }
-        public string? LastModifiedBy { get; set; }
-        public bool IsDeleted { get; set; } = false;
+        public Guid? LastModifiedBy { get; set; }
+
+        // --- ISoftDelete ---
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletedDate { get; set; }
+        public Guid? DeletedBy { get; set; }
+
+        // Navigation Properties
+        public virtual ICollection<ApplicationUserRole> UserRoles { get; set; }
     }
 }

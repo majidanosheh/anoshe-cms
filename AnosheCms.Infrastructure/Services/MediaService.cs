@@ -1,142 +1,129 @@
-﻿// --- شروع Using Directives ---
+﻿// File: AnosheCms.Infrastructure/Services/MediaService.cs
+// (تصحیح‌شده برای خطای Guid? to string)
+
 using AnosheCms.Application.Interfaces;
 using AnosheCms.Domain.Entities;
 using AnosheCms.Infrastructure.Persistence.Data;
-using Microsoft.AspNetCore.Hosting; // برای IWebHostEnvironment
-using Microsoft.AspNetCore.Http;   // برای IFormFile
-using Microsoft.EntityFrameworkCore; // برای ToListAsync
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
-using System.IO; // برای Path و File
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-// --- پایان Using Directives ---
 
 namespace AnosheCms.Infrastructure.Services
 {
     public class MediaService : IMediaService
     {
         private readonly ApplicationDbContext _context;
-        private readonly IWebHostEnvironment _webHostEnvironment; // برای پیدا کردن مسیر wwwroot
+        private readonly ICurrentUserService _currentUserService;
+        private readonly string _uploadPath;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        // مسیر پایه برای ذخیره فایل‌ها در داخل پروژه Api
-        private readonly string _baseUploadPath = "uploads";
-
-        public MediaService(ApplicationDbContext context, IWebHostEnvironment webHostEnvironment)
+        public MediaService(
+            ApplicationDbContext context,
+            ICurrentUserService currentUserService,
+            IHttpContextAccessor httpContextAccessor)
         {
             _context = context;
-            _webHostEnvironment = webHostEnvironment;
+            _currentUserService = currentUserService;
+            _httpContextAccessor = httpContextAccessor;
+            _uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+            if (!Directory.Exists(_uploadPath))
+            {
+                Directory.CreateDirectory(_uploadPath);
+            }
         }
 
-        public async Task<MediaUploadResult> UploadFileAsync(IFormFile file, string? altText)
+        private string GetBaseUrl()
         {
-            if (file == null || file.Length == 0)
+            var request = _httpContextAccessor.HttpContext?.Request;
+            if (request == null) return string.Empty;
+            return $"{request.Scheme}://{request.Host}";
+        }
+
+        private MediaDto MapToDto(MediaFile mediaFile)
+        {
+            var baseUrl = GetBaseUrl();
+            return new MediaDto(
+                mediaFile.Id,
+                mediaFile.FileName,
+                mediaFile.ContentType,
+                mediaFile.Size,
+                $"{baseUrl}/uploads/{mediaFile.StoredFileName}"
+            );
+        }
+
+        public async Task<List<MediaDto>> GetAllMediaAsync()
+        {
+            var items = await _context.MediaFiles
+                .AsNoTracking()
+                .OrderByDescending(m => m.CreatedDate)
+                .ToListAsync();
+
+            return items.Select(MapToDto).ToList();
+        }
+
+        public async Task<MediaDto?> GetMediaByIdAsync(Guid id)
+        {
+            var mediaFile = await _context.MediaFiles.FindAsync(id);
+            if (mediaFile == null) return null;
+            return MapToDto(mediaFile);
+        }
+
+        public async Task<bool> DeleteMediaAsync(Guid id)
+        {
+            var mediaFile = await _context.MediaFiles.FindAsync(id);
+            if (mediaFile == null) return false;
+
+            var filePath = Path.Combine(_uploadPath, mediaFile.StoredFileName);
+            if (File.Exists(filePath))
             {
-                return new MediaUploadResult(false, ErrorMessage: "هیچ فایلی ارائه نشده است.");
+                File.Delete(filePath);
             }
 
-            // TODO: افزودن اعتبارسنجی برای نوع فایل و حجم فایل
+            _context.MediaFiles.Remove(mediaFile);
+            await _context.SaveChangesAsync();
+            return true;
+        }
 
-            var year = DateTime.UtcNow.Year.ToString();
-            var month = DateTime.UtcNow.Month.ToString("D2"); // D2: 10, 09, 08
+        public async Task<List<MediaDto>> UploadMediaAsync(IFormFileCollection files)
+        {
+            var uploadedDtos = new List<MediaDto>();
+            var userId = _currentUserService.UserId; // (این Guid? است)
 
-            // 1. ایجاد مسیر نسبی (e.g., /uploads/2025/10)
-            var relativeFolderPath = Path.Combine(_baseUploadPath, year, month);
-
-            // 2. ایجاد مسیر فیزیکی کامل (e.g., C:\...\AnosheCms.Api\wwwroot\uploads\2025\10)
-            var physicalFolderPath = Path.Combine(_webHostEnvironment.WebRootPath, relativeFolderPath);
-
-            // اطمینان از وجود پوشه
-            Directory.CreateDirectory(physicalFolderPath);
-
-            // 3. ایجاد نام فایل یونیک
-            var fileExtension = Path.GetExtension(file.FileName);
-            var uniqueFileName = $"{Guid.NewGuid()}{fileExtension}";
-            var physicalFilePath = Path.Combine(physicalFolderPath, uniqueFileName);
-
-            // 4. ذخیره فایل فیزیکی
-            try
+            foreach (var file in files)
             {
-                await using (var stream = new FileStream(physicalFilePath, FileMode.Create))
+                if (file.Length == 0) continue;
+
+                var fileExtension = Path.GetExtension(file.FileName);
+                var storedFileName = $"{Guid.NewGuid()}{fileExtension}";
+                var filePath = Path.Combine(_uploadPath, storedFileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
                 {
                     await file.CopyToAsync(stream);
                 }
-            }
-            catch (Exception ex)
-            {
-                // TODO: لاگ کردن خطا
-                return new MediaUploadResult(false, ErrorMessage: $"ذخیره فایل با شکست مواجه شد: {ex.Message}");
-            }
 
-            // 5. ایجاد موجودیت متادیتا
-            var mediaItem = new MediaItem
-            {
-                FileName = uniqueFileName,
-                OriginalFileName = file.FileName,
-                MimeType = file.ContentType,
-                FileSize = file.Length,
-                AltText = altText,
-                FolderPath = relativeFolderPath.Replace("\\", "/") // استفاده از اسلش در دیتابیس
-            };
-
-            // 6. ذخیره متادیتا در دیتابیس
-            _context.MediaItems.Add(mediaItem);
-            await _context.SaveChangesAsync(); // فیلدهای Auditing در اینجا پر می‌شوند
-
-            return new MediaUploadResult(true, MediaItem: mediaItem);
-        }
-
-        public async Task<bool> DeleteMediaItemAsync(Guid id)
-        {
-            var mediaItem = await _context.MediaItems.FindAsync(id);
-            if (mediaItem == null || mediaItem.IsDeleted)
-            {
-                return false; // یافت نشد یا قبلاً حذف شده
-            }
-
-            // 1. حذف فایل فیزیکی
-            var physicalFilePath = Path.Combine(_webHostEnvironment.WebRootPath, mediaItem.FolderPath, mediaItem.FileName);
-            if (File.Exists(physicalFilePath))
-            {
-                try
+                var mediaFile = new MediaFile
                 {
-                    File.Delete(physicalFilePath);
-                }
-                catch (Exception)
-                {
-                    // TODO: لاگ کردن خطا - نتوانستیم فایل را پاک کنیم اما آیتم دیتابیس را حذف می‌کنیم
-                }
+                    FileName = file.FileName,
+                    StoredFileName = storedFileName,
+                    ContentType = file.ContentType,
+                    Size = file.Length,
+
+                    // ---*** (این خط تصحیح شد) ***---
+                    CreatedBy = userId // (تبدیل Guid? به string?)
+                };
+
+                _context.MediaFiles.Add(mediaFile);
+                await _context.SaveChangesAsync();
+
+                uploadedDtos.Add(MapToDto(mediaFile));
             }
 
-            // 2. حذف از دیتابیس (Soft Delete به طور خودکار توسط DbContext انجام می‌شود)
-            _context.MediaItems.Remove(mediaItem);
-            await _context.SaveChangesAsync();
-            return true;
-        }
-
-        public async Task<List<MediaItem>> GetAllMediaItemsAsync()
-        {
-            // Soft Delete به طور خودکار فیلتر می‌شود
-            return await _context.MediaItems.OrderByDescending(m => m.CreatedDate).ToListAsync();
-        }
-
-        public async Task<MediaItem?> GetMediaItemByIdAsync(Guid id)
-        {
-            return await _context.MediaItems.FindAsync(id);
-        }
-
-        public async Task<bool> UpdateMediaItemAsync(Guid id, MediaUpdateDto updateDto)
-        {
-            var mediaItem = await _context.MediaItems.FindAsync(id);
-            if (mediaItem == null)
-            {
-                return false;
-            }
-
-            mediaItem.AltText = updateDto.AltText;
-            // فیلد LastModifiedBy به طور خودکار توسط DbContext آپدیت می‌شود
-            await _context.SaveChangesAsync();
-            return true;
+            return uploadedDtos;
         }
     }
 }

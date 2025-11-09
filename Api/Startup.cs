@@ -1,6 +1,5 @@
-﻿// File: AnosheCms.Api/Startup.cs
-
-// --- شروع Using Directives ---
+﻿// File: Api/Startup.cs
+// (نسخه نهایی بازسازی‌شده برای فاز ۴)
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -14,8 +13,10 @@ using AnosheCms.Application.Interfaces;
 using AnosheCms.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using System;
 using System.Text;
-// --- پایان Using Directives ---
+using System.Collections.Generic;
+using Microsoft.AspNetCore.Identity; // (ضروری برای فاز ۴)
 
 namespace AnosheCms.Api
 {
@@ -32,47 +33,47 @@ namespace AnosheCms.Api
 
         public void ConfigureServices(IServiceCollection services)
         {
-            // 1. Connection String
-            var connectionString = Configuration.GetConnectionString("DefaultConnection")
-                ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-
-            // 2. DbContext
             services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlServer(connectionString));
+                options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")
+                    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.")));
 
-            // 3. Identity
+            // ---*** (بخش Identity بازسازی شد - فاز ۴) ***---
             services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
             {
-                // ... (تنظیمات Identity)
-                options.Password.RequireDigit = true;
-                options.Password.RequireLowercase = true;
-                options.Password.RequireUppercase = true;
-                options.Password.RequireNonAlphanumeric = true;
-                options.Password.RequiredLength = 8;
+                // (بر اساس 177.txt - می‌توانید اینها را سخت‌گیرانه‌تر کنید)
+                options.Password.RequireDigit = false;
+                options.Password.RequireLowercase = false;
+                options.Password.RequireUppercase = false;
+                options.Password.RequireNonAlphanumeric = false;
+                options.Password.RequiredLength = 6;
                 options.User.RequireUniqueEmail = true;
                 options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
                 options.Lockout.MaxFailedAccessAttempts = 5;
             })
-                .AddEntityFrameworkStores<ApplicationDbContext>();
+            // (استفاده از DbContext و مدل‌های Guid جدید ما)
+            .AddEntityFrameworkStores<ApplicationDbContext>()
+            .AddDefaultTokenProviders();
+            // ---*** (پایان بخش Identity) ***---
 
-            // 4. HttpContextAccessor
             services.AddHttpContextAccessor();
 
-            // 5. ICurrentUserService
+            // ---*** (ثبت سرویس‌های پروژه - فاز ۴) ***---
             services.AddScoped<ICurrentUserService, CurrentUserService>();
 
-            // 6. IAuthService
+            // (سرویس‌های جدید فاز ۴)
+            services.AddScoped<ITokenService, TokenService>();
             services.AddScoped<IAuthService, AuthService>();
 
-            // 7. IMediaService
+            // (سرویس‌های ماژول‌های قبلی)
             services.AddScoped<IMediaService, MediaService>();
-
-            // ---*** کد جدید اضافه شده ***---
-            // 8. IContentTypeService
             services.AddScoped<IContentTypeService, ContentTypeService>();
-            // ---*** پایان کد جدید ***---
+            services.AddScoped<INavigationService, NavigationService>();
+            services.AddScoped<IContentEntryService, ContentEntryService>(); // (بر اساس بازسازی ContentItem)
 
-            // 9. JWT Authentication
+            services.AddScoped<IUserService, UserService>();
+            // ---*** (پایان بخش سرویس‌ها) ***---
+
+            // ---*** (پیکربندی JWT - فاز ۴) ***---
             services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -80,7 +81,6 @@ namespace AnosheCms.Api
             })
             .AddJwtBearer(o =>
             {
-                // ... (تنظیمات JWT)
                 var secretKey = Configuration["JwtSettings:Secret"]
                     ?? throw new InvalidOperationException("JWT Secret key is not configured.");
 
@@ -93,38 +93,46 @@ namespace AnosheCms.Api
                     ValidateAudience = true,
                     ValidAudience = Configuration["JwtSettings:Audience"],
                     ValidateLifetime = true,
-                    ClockSkew = TimeSpan.Zero
+                    ClockSkew = TimeSpan.Zero // (بدون تاخیر زمانی)
                 };
             });
+            // ---*** (پایان بخش JWT) ***---
 
-            // 10. Controllers
             services.AddControllers();
             services.AddEndpointsApiExplorer();
 
-            // 11. Swagger
+            // (Swagger/OpenAPI بدون تغییر، اما ضروری)
             services.AddSwaggerGen(c =>
             {
-                // ... (تنظیمات Swagger)
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "AnosheCms API", Version = "v1" });
-
                 c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {
-                    // ... (تنظیمات Swagger Auth)
+                    Name = "Authorization",
+                    Type = SecuritySchemeType.ApiKey,
+                    Scheme = "Bearer",
+                    BearerFormat = "JWT",
+                    In = ParameterLocation.Header,
+                    Description = "Enter 'Bearer' [space] and then your valid token"
                 });
-
                 c.AddSecurityRequirement(new OpenApiSecurityRequirement
                 {
-                    // ... (تنظیمات Swagger Auth)
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+                        },
+                        new List<string>()
+                    }
                 });
             });
 
-            // 12. CORS
+            // (CORS بدون تغییر، اما ضروری)
             services.AddCors(options =>
             {
                 options.AddPolicy(name: _corsPolicyName,
                     builder =>
                     {
-                        builder.AllowAnyOrigin()
+                        builder.WithOrigins("http://localhost:5173") // آدرس فرانت‌اند
                                .AllowAnyHeader()
                                .AllowAnyMethod();
                     });
@@ -140,14 +148,11 @@ namespace AnosheCms.Api
                 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "AnosheCms API v1"));
             }
 
-            // app.UseHttpsRedirection(); 
-
-            app.UseStaticFiles();
-
+            app.UseStaticFiles(); // (برای wwwroot/uploads)
             app.UseRouting();
-
             app.UseCors(_corsPolicyName);
 
+            // (مهم: Authentication باید قبل از Authorization باشد)
             app.UseAuthentication();
             app.UseAuthorization();
 
