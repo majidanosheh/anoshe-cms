@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Threading.Tasks;
+using AnosheCms.Domain.Constants; // <-- (جدید)
 
 namespace AnosheCms.Api.Controllers
 {
@@ -19,6 +20,7 @@ namespace AnosheCms.Api.Controllers
         }
 
         [HttpGet]
+        [Authorize(Policy = Permissions.ViewContent)] // <-- پالیسی اعمال شد
         public async Task<IActionResult> GetItems(string apiSlug)
         {
             var result = await _itemService.GetContentEntriesAsync(apiSlug);
@@ -26,6 +28,7 @@ namespace AnosheCms.Api.Controllers
         }
 
         [HttpGet("{itemId}")]
+        [Authorize(Policy = Permissions.ViewContent)] // <-- پالیسی اعمال شد
         public async Task<IActionResult> GetItemById(string apiSlug, Guid itemId)
         {
             var result = await _itemService.GetContentEntryByIdAsync(apiSlug, itemId);
@@ -34,6 +37,7 @@ namespace AnosheCms.Api.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = Permissions.CreateContent)] // <-- پالیسی اعمال شد
         public async Task<IActionResult> CreateItem(string apiSlug, [FromBody] ContentEntryCreateDto dto)
         {
             var (result, error) = await _itemService.CreateContentEntryAsync(apiSlug, dto);
@@ -42,6 +46,7 @@ namespace AnosheCms.Api.Controllers
         }
 
         [HttpPut("{itemId}")]
+        [Authorize(Policy = Permissions.EditContent)] // <-- پالیسی اعمال شد
         public async Task<IActionResult> UpdateItem(string apiSlug, Guid itemId, [FromBody] ContentEntryCreateDto dto)
         {
             var (result, error) = await _itemService.UpdateContentEntryAsync(apiSlug, itemId, dto);
@@ -51,6 +56,7 @@ namespace AnosheCms.Api.Controllers
         }
 
         [HttpDelete("{itemId}")]
+        [Authorize(Policy = Permissions.DeleteContent)] // <-- پالیسی اعمال شد
         public async Task<IActionResult> DeleteItem(string apiSlug, Guid itemId)
         {
             var success = await _itemService.DeleteContentEntryAsync(apiSlug, itemId);

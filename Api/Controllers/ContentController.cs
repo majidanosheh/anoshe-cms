@@ -1,61 +1,48 @@
 ﻿// File: Api/Controllers/ContentController.cs
 using AnosheCms.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization; // (برای AllowAnonymous)
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 
 namespace AnosheCms.Api.Controllers
 {
     [ApiController]
-    [Route("api/content")] // (مسیر عمومی، بدون 'admin')
+    [Route("api/content/{apiSlug}")] // (روت عمومی)
+    [AllowAnonymous] // (مهم: این کنترلر عمومی است)
     public class ContentController : ControllerBase
     {
-        private readonly IContentEntryService _entryService;
-        private readonly IContentTypeService _typeService;
+        private readonly IContentEntryService _itemService;
 
-        public ContentController(IContentEntryService entryService, IContentTypeService typeService)
+        public ContentController(IContentEntryService itemService)
         {
-            _entryService = entryService;
-            _typeService = typeService;
+            _itemService = itemService;
         }
 
-        // --- Content Type Endpoints ---
-
-        // GET: /api/content/types
-        [HttpGet("types")]
-        public async Task<IActionResult> GetAllContentTypes()
+        /// <summary>
+        /// دریافت لیست تمام آیتم‌های منتشر شده برای یک نوع محتوا
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> GetPublishedItems(string apiSlug)
         {
-            // (استفاده از سرویس موجود)
-            var result = await _typeService.GetAllContentTypesAsync();
+            // (استفاده از متد عمومی که در سرویس ساخته بودیم)
+            var result = await _itemService.GetPublishedContentEntriesAsync(apiSlug);
             return Ok(result);
         }
 
-        // GET: /api/content/types/{apiSlug}
-        [HttpGet("types/{apiSlug}")]
-        public async Task<IActionResult> GetContentType(string apiSlug)
+        /// <summary>
+        /// دریافت یک آیتم منتشر شده خاص با استفاده از شناسه (Guid) آن
+        /// </summary>
+        /// <param name="apiSlug">شناسه نوع محتوا (e.g. 'blog-posts')</param>
+        /// <param name="itemIdentifier">شناسه آیتم (e.g. 'guid' یا در آینده 'item-slug')</param>
+        [HttpGet("{itemIdentifier}")]
+        public async Task<IActionResult> GetPublishedItem(string apiSlug, string itemIdentifier)
         {
-            var result = await _typeService.GetContentTypeBySlugAsync(apiSlug);
-            if (result == null) return NotFound();
-            return Ok(result);
-        }
-
-        // --- Content Entry Endpoints ---
-
-        // GET: /api/content/{contentTypeSlug}
-        [HttpGet("{contentTypeSlug}")]
-        public async Task<IActionResult> GetPublishedItems(string contentTypeSlug)
-        {
-            // (استفاده از متد 'Published' که قبلاً نوشتیم) [cite: 387-415]
-            var result = await _entryService.GetPublishedContentEntriesAsync(contentTypeSlug);
-            return Ok(result);
-        }
-
-        // GET: /api/content/{contentTypeSlug}/{itemApiSlug}
-        [HttpGet("{contentTypeSlug}/{itemApiSlug}")]
-        public async Task<IActionResult> GetPublishedItem(string contentTypeSlug, string itemApiSlug)
-        {
-            // (استفاده از متد 'Published' که قبلاً نوشتیم) [cite: 387-415]
-            var result = await _entryService.GetPublishedContentEntryAsync(contentTypeSlug, itemApiSlug);
-            if (result == null) return NotFound();
+            // (استفاده از متد عمومی که در سرویس ساخته بودیم)
+            var result = await _itemService.GetPublishedContentEntryAsync(apiSlug, itemIdentifier);
+            if (result == null)
+            {
+                return NotFound();
+            }
             return Ok(result);
         }
     }

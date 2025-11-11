@@ -7,22 +7,27 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Threading.Tasks;
+using AnosheCms.Domain.Constants; // <-- (Using
+using System.Collections.Generic;
+using System.Security.Claims;
+using System;
 
 namespace AnosheCms.Api.Controllers
 {
     [ApiController]
     [Route("api/admin/roles")]
-    [Authorize(Roles = "SuperAdmin")]
+    // [Authorize(Roles = "SuperAdmin")] // <-- حذف شد
+    [Authorize] // <-- عمومی اعمال شد
     public class AdminRolesController : ControllerBase
     {
         private readonly RoleManager<ApplicationRole> _roleManager;
-
         public AdminRolesController(RoleManager<ApplicationRole> roleManager)
         {
             _roleManager = roleManager;
         }
 
         [HttpGet]
+        [Authorize(Policy = Permissions.ViewRoles)] // <-- پالیسی اعمال شد
         public async Task<IActionResult> GetAllRoles()
         {
             var roles = await _roleManager.Roles
@@ -34,8 +39,111 @@ namespace AnosheCms.Api.Controllers
                     IsSystemRole = r.IsSystemRole
                 })
                 .ToListAsync();
-
             return Ok(roles);
+        }
+
+        [HttpGet("permissions")]
+        [Authorize(Policy = Permissions.ManagePermissions)] // <-- پالیسی اعمال شد
+        public IActionResult GetAllPermissions()
+        {
+            var permissionGroups = GetAllPermissionGroupsInternal();
+            return Ok(permissionGroups);
+        }
+
+        [HttpGet("{roleId}/permissions")]
+        [Authorize(Policy = Permissions.ManagePermissions)] // <-- پالیسی اعمال شد
+        public async Task<IActionResult> GetRolePermissions(Guid roleId)
+        {
+            var role = await _roleManager.FindByIdAsync(roleId.ToString());
+            if (role == null) return NotFound("Role not found.");
+            var claims = await _roleManager.GetClaimsAsync(role);
+            var permissions = claims.Where(c => c.Type == "Permission")
+                                    .Select(c => c.Value)
+                                    .ToList();
+            return Ok(permissions);
+        }
+
+        [HttpPut("{roleId}/permissions")]
+        [Authorize(Policy = Permissions.ManagePermissions)] // <-- پالیسی اعمال شد
+        public async Task<IActionResult> UpdateRolePermissions(Guid roleId, [FromBody] UpdateRolePermissionsRequest request)
+        {
+            var role = await _roleManager.FindByIdAsync(roleId.ToString());
+            if (role == null) return NotFound("Role not found.");
+            if (role.Name == "SuperAdmin")
+            {
+                return BadRequest(new { Message = "Cannot modify SuperAdmin permissions." });
+            }
+            var currentClaims = await _roleManager.GetClaimsAsync(role);
+            var permissionsToRemove = currentClaims.Where(c => c.Type == "Permission").ToList();
+            foreach (var claim in permissionsToRemove)
+            {
+                await _roleManager.RemoveClaimAsync(role, claim);
+            }
+            foreach (var permissionName in request.PermissionNames.Distinct())
+            {
+                if (!string.IsNullOrEmpty(permissionName))
+                {
+                    await _roleManager.AddClaimAsync(role, new Claim("Permission", permissionName));
+                }
+            }
+            return Ok(new { Message = "Permissions updated successfully." });
+        }
+
+        private List<PermissionGroupDto> GetAllPermissionGroupsInternal()
+        {
+            return new List<PermissionGroupDto> {
+                new PermissionGroupDto {
+                    GroupName = "داشبورد", Permissions = new List<PermissionDto> {
+                        new PermissionDto { Name = Permissions.ViewDashboard, Description = "مشاهده داشبورد" }
+                    }
+                },
+                new PermissionGroupDto {
+                    GroupName = "انواع محتوا", Permissions = new List<PermissionDto> {
+                        new PermissionDto { Name = Permissions.ViewContentTypes, Description = "مشاهده لیست انواع محتوا" },
+                        new PermissionDto { Name = Permissions.CreateContentTypes, Description = "ایجاد نوع محتوای جدید" },
+                        new PermissionDto { Name = Permissions.EditContentTypes, Description = "ویرایش انواع محتوا و فیلدها" },
+                        new PermissionDto { Name = Permissions.DeleteContentTypes, Description = "حذف انواع محتوا" }
+                    }
+                },
+                new PermissionGroupDto {
+                    GroupName = "محتوا (کلی)", Permissions = new List<PermissionDto> {
+                        new PermissionDto { Name = Permissions.ViewContent, Description = "مشاهده لیست آیتم‌های محتوا" },
+                        new PermissionDto { Name = Permissions.CreateContent, Description = "ایجاد آیتم محتوای جدید" },
+                        new PermissionDto { Name = Permissions.EditContent, Description = "ویرایش آیتم‌های محتوا" },
+                        new PermissionDto { Name = Permissions.DeleteContent, Description = "حذف آیتم‌های محتوا" }
+                    }
+                },
+                new PermissionGroupDto {
+                    GroupName = "رسانه", Permissions = new List<PermissionDto> {
+                        new PermissionDto { Name = Permissions.ViewMedia, Description = "مشاهده کتابخانه رسانه" },
+                        new PermissionDto { Name = Permissions.CreateMedia, Description = "آپلود فایل جدید" },
+                        new PermissionDto { Name = Permissions.DeleteMedia, Description = "حذف فایل‌ها" }
+                    }
+                },
+                new PermissionGroupDto {
+                    GroupName = "تنظیمات", Permissions = new List<PermissionDto> {
+                        new PermissionDto { Name = Permissions.ViewSettings, Description = "مشاهده تنظیمات سراسری" },
+                        new PermissionDto { Name = Permissions.EditSettings, Description = "ویرایش تنظیمات سراسری" }
+                    }
+                },
+                new PermissionGroupDto {
+                    GroupName = "مدیریت کاربران", Permissions = new List<PermissionDto> {
+                        new PermissionDto { Name = Permissions.ViewUsers, Description = "مشاهده لیست کاربران" },
+                        new PermissionDto { Name = Permissions.CreateUsers, Description = "ایجاد کاربر جدید" },
+                        new PermissionDto { Name = Permissions.EditUsers, Description = "ویرایش کاربران" },
+                        new PermissionDto { Name = Permissions.DeleteUsers, Description = "حذف (غیرفعال کردن) کاربران" }
+                    }
+                },
+                new PermissionGroupDto {
+                    GroupName = "مدیریت نقش‌ها", Permissions = new List<PermissionDto> {
+                        new PermissionDto { Name = Permissions.ViewRoles, Description = "مشاهده لیست نقش‌ها" },
+                        new PermissionDto { Name = Permissions.CreateRoles, Description = "ایجاد نقش جدید" },
+                        new PermissionDto { Name = Permissions.EditRoles, Description = "ویرایش نقش‌ها" },
+                        new PermissionDto { Name = Permissions.DeleteRoles, Description = "حذف نقش‌ها" },
+                        new PermissionDto { Name = Permissions.ManagePermissions, Description = "مدیریت دسترسی‌های نقش‌ها" }
+                    }
+                }
+            };
         }
     }
 }

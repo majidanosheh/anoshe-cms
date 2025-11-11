@@ -1,5 +1,6 @@
 ﻿// File: Api/Startup.cs
-// (نسخه نهایی بازسازی‌شده برای فاز ۴)
+// (نسخه نهایی بازسازی‌شده برای فاز ۸)
+
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -16,7 +17,13 @@ using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Text;
 using System.Collections.Generic;
-using Microsoft.AspNetCore.Identity; // (ضروری برای فاز ۴)
+using Microsoft.AspNetCore.Identity;
+// (Using های مورد نیاز برای فاز ۸)
+using Microsoft.AspNetCore.Authorization;
+using AnosheCms.Api.Authorization;
+using AnosheCms.Domain.Constants;
+using System.Reflection;
+using System.Linq;
 
 namespace AnosheCms.Api
 {
@@ -40,7 +47,6 @@ namespace AnosheCms.Api
             // ---*** (بخش Identity بازسازی شد - فاز ۴) ***---
             services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
             {
-                // (بر اساس 177.txt - می‌توانید اینها را سخت‌گیرانه‌تر کنید)
                 options.Password.RequireDigit = false;
                 options.Password.RequireLowercase = false;
                 options.Password.RequireUppercase = false;
@@ -50,30 +56,30 @@ namespace AnosheCms.Api
                 options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
                 options.Lockout.MaxFailedAccessAttempts = 5;
             })
-            // (استفاده از DbContext و مدل‌های Guid جدید ما)
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders();
             // ---*** (پایان بخش Identity) ***---
 
             services.AddHttpContextAccessor();
 
-            // ---*** (ثبت سرویس‌های پروژه - فاز ۴) ***---
+            // ---*** (ثبت سرویس‌های پروژه - فاز ۴، ۵، ۶) ***---
             services.AddScoped<ICurrentUserService, CurrentUserService>();
-
-            // (سرویس‌های جدید فاز ۴)
             services.AddScoped<ITokenService, TokenService>();
             services.AddScoped<IAuthService, AuthService>();
-
-            // (سرویس‌های ماژول‌های قبلی)
             services.AddScoped<IMediaService, MediaService>();
             services.AddScoped<IContentTypeService, ContentTypeService>();
-            services.AddScoped<INavigationService, NavigationService>();
-            services.AddScoped<IContentEntryService, ContentEntryService>(); // (بر اساس بازسازی ContentItem)
-
+            services.AddScoped<IContentEntryService, ContentEntryService>();
             services.AddScoped<IUserService, UserService>();
+            services.AddScoped<INavigationService, NavigationService>();
+            services.AddScoped<ISettingsService, SettingsService>();
             // ---*** (پایان بخش سرویس‌ها) ***---
 
-            // ---*** (پیکربندی JWT - فاز ۴) ***---
+            // ---*** (بخش Authorization بازسازی شد - فاز ۸) ***---
+
+            // ۱. ثبت Handler سفارشی
+            services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
+
+            // ۲. AddAuthentication (پیکربندی JWT)
             services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -93,15 +99,33 @@ namespace AnosheCms.Api
                     ValidateAudience = true,
                     ValidAudience = Configuration["JwtSettings:Audience"],
                     ValidateLifetime = true,
-                    ClockSkew = TimeSpan.Zero // (بدون تاخیر زمانی)
+                    ClockSkew = TimeSpan.Zero
                 };
             });
-            // ---*** (پایان بخش JWT) ***---
+
+            // ۳. ثبت Policy ها (بر اساس Permissions.cs)
+            services.AddAuthorization(options =>
+            {
+                var permissionType = typeof(Permissions);
+                var allPermissions = permissionType.GetFields(BindingFlags.Public | BindingFlags.Static)
+                    .Where(f => f.IsLiteral && f.FieldType == typeof(string))
+                    .Select(f => (string)f.GetValue(null))
+                    .ToList();
+
+                foreach (var permission in allPermissions)
+                {
+                    options.AddPolicy(permission, policy =>
+                        policy.AddRequirements(new PermissionRequirement(permission)));
+                }
+
+                options.AddPolicy("SuperAdminOnly", policy => policy.RequireRole("SuperAdmin"));
+            });
+            // ---*** (پایان بخش Authorization) ***---
 
             services.AddControllers();
             services.AddEndpointsApiExplorer();
 
-            // (Swagger/OpenAPI بدون تغییر، اما ضروری)
+            // (Swagger/OpenAPI)
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "AnosheCms API", Version = "v1" });
@@ -126,13 +150,13 @@ namespace AnosheCms.Api
                 });
             });
 
-            // (CORS بدون تغییر، اما ضروری)
+            // (CORS)
             services.AddCors(options =>
             {
                 options.AddPolicy(name: _corsPolicyName,
                     builder =>
                     {
-                        builder.WithOrigins("http://localhost:5173") // آدرس فرانت‌اند
+                        builder.WithOrigins("http://localhost:5173")
                                .AllowAnyHeader()
                                .AllowAnyMethod();
                     });
@@ -148,11 +172,10 @@ namespace AnosheCms.Api
                 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "AnosheCms API v1"));
             }
 
-            app.UseStaticFiles(); // (برای wwwroot/uploads)
+            app.UseStaticFiles();
             app.UseRouting();
             app.UseCors(_corsPolicyName);
 
-            // (مهم: Authentication باید قبل از Authorization باشد)
             app.UseAuthentication();
             app.UseAuthorization();
 

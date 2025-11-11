@@ -11,22 +11,17 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Text.Json;
 using System.Collections.Generic;
+using AnosheCms.Domain.Constants; // <-- (اطمینان از وجود Using)
 
 namespace AnosheCms.Infrastructure.Persistence.Data
 {
     public class ApplicationDbContext : IdentityDbContext<
-        ApplicationUser,
-        ApplicationRole,
-        Guid,
-        IdentityUserClaim<Guid>,
-        ApplicationUserRole,
-        IdentityUserLogin<Guid>,
-        IdentityRoleClaim<Guid>,
-        IdentityUserToken<Guid>>
+        ApplicationUser, ApplicationRole, Guid,
+        IdentityUserClaim<Guid>, ApplicationUserRole, IdentityUserLogin<Guid>,
+        IdentityRoleClaim<Guid>, IdentityUserToken<Guid>>
     {
         private readonly ICurrentUserService _currentUserService;
 
-        // (DbSets)
         public DbSet<ContentType> ContentTypes { get; set; }
         public DbSet<ContentField> ContentFields { get; set; }
         public DbSet<ContentItem> ContentItems { get; set; }
@@ -36,10 +31,9 @@ namespace AnosheCms.Infrastructure.Persistence.Data
         public DbSet<UserSession> UserSessions { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
 
-
         public ApplicationDbContext(
             DbContextOptions<ApplicationDbContext> options,
-            ICurrentUserService currentUserService = null // (اجازه null برای DesignTime)
+            ICurrentUserService currentUserService = null
             ) : base(options)
         {
             _currentUserService = currentUserService;
@@ -47,7 +41,7 @@ namespace AnosheCms.Infrastructure.Persistence.Data
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
-            var userId = _currentUserService?.UserId; // (بررسی null بودن)
+            var userId = _currentUserService?.UserId;
             var now = DateTime.UtcNow;
 
             foreach (var entry in ChangeTracker.Entries())
@@ -86,7 +80,6 @@ namespace AnosheCms.Infrastructure.Persistence.Data
         {
             base.OnModelCreating(builder);
 
-            // (تنظیم نام جداول Identity)
             builder.Entity<ApplicationUser>().ToTable("Users");
             builder.Entity<ApplicationRole>().ToTable("Roles");
             builder.Entity<ApplicationUserRole>().ToTable("UserRoles");
@@ -95,23 +88,18 @@ namespace AnosheCms.Infrastructure.Persistence.Data
             builder.Entity<IdentityRoleClaim<Guid>>().ToTable("RoleClaims");
             builder.Entity<IdentityUserToken<Guid>>().ToTable("UserTokens");
 
-            // (روابط Identity)
-            builder.Entity<ApplicationUser>(b =>
-            {
+            builder.Entity<ApplicationUser>(b => {
                 b.HasMany(e => e.UserRoles).WithOne(e => e.User).HasForeignKey(ur => ur.UserId).IsRequired();
                 b.HasMany(e => e.RefreshTokens).WithOne(e => e.User).HasForeignKey(rt => rt.UserId).IsRequired();
                 b.HasMany(e => e.LoginHistories).WithOne(e => e.User).HasForeignKey(lh => lh.UserId).IsRequired();
                 b.HasMany(e => e.Sessions).WithOne(e => e.User).HasForeignKey(s => s.UserId).IsRequired();
             });
 
-            builder.Entity<ApplicationRole>(b =>
-            {
+            builder.Entity<ApplicationRole>(b => {
                 b.HasMany(e => e.UserRoles).WithOne(e => e.Role).HasForeignKey(ur => ur.RoleId).IsRequired();
             });
 
-            // (پیکربندی ContentItem JSON)
-            builder.Entity<ContentItem>(b =>
-            {
+            builder.Entity<ContentItem>(b => {
                 b.Property(ci => ci.ContentData)
                     .HasConversion(
                         v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
@@ -119,7 +107,6 @@ namespace AnosheCms.Infrastructure.Persistence.Data
                     );
             });
 
-            // (اعمال فیلترهای سراسری)
             builder.Entity<ApplicationUser>().HasQueryFilter(u => !u.IsDeleted);
             builder.Entity<ContentType>().HasQueryFilter(ct => !ct.IsDeleted);
             builder.Entity<ContentField>().HasQueryFilter(cf => !cf.IsDeleted);
@@ -127,7 +114,6 @@ namespace AnosheCms.Infrastructure.Persistence.Data
             builder.Entity<MediaFile>().HasQueryFilter(mf => !mf.IsDeleted);
             builder.Entity<ApplicationRole>().HasQueryFilter(ar => !ar.IsDeleted);
 
-            // (ایندکس‌های 177.txt)
             builder.Entity<RefreshToken>().HasIndex(r => r.Token).IsUnique();
             builder.Entity<RefreshToken>().HasIndex(r => new { r.UserId, r.IsRevoked });
             builder.Entity<UserLoginHistory>().HasIndex(h => h.UserId);
@@ -145,7 +131,6 @@ namespace AnosheCms.Infrastructure.Persistence.Data
             Guid USER_ROLE_ID = Guid.Parse("a3b3c3d3-3333-4444-8888-a3b3c3d3e3f3");
             Guid SUPER_ADMIN_USER_ID = Guid.Parse("d1a1b1c1-1111-4444-8888-d1a1b1c1e1f1");
 
-            // ---*** (تصحیح شد: فیلد 'Description' اضافه شد) ***---
             builder.Entity<ApplicationRole>().HasData(
                 new ApplicationRole
                 {
@@ -153,7 +138,7 @@ namespace AnosheCms.Infrastructure.Persistence.Data
                     Name = "SuperAdmin",
                     NormalizedName = "SUPERADMIN",
                     DisplayName = "سوپر ادمین",
-                    Description = "دسترسی کامل به تمام سیستم", // (اضافه شد)
+                    Description = "دسترسی کامل به تمام سیستم",
                     IsSystemRole = true,
                     CreatedDate = DateTime.UtcNow
                 },
@@ -163,7 +148,7 @@ namespace AnosheCms.Infrastructure.Persistence.Data
                     Name = "Admin",
                     NormalizedName = "ADMIN",
                     DisplayName = "ادمین",
-                    Description = "دسترسی به بخش مدیریت محتوا و ساختار", // (اضافه شد)
+                    Description = "دسترسی به بخش مدیریت محتوا و ساختار",
                     IsSystemRole = true,
                     CreatedDate = DateTime.UtcNow
                 },
@@ -173,13 +158,30 @@ namespace AnosheCms.Infrastructure.Persistence.Data
                     Name = "User",
                     NormalizedName = "USER",
                     DisplayName = "کاربر",
-                    Description = "دسترسی پایه (در صورت نیاز)", // (اضافه شد)
+                    Description = "دسترسی پایه (در صورت نیاز)",
                     IsSystemRole = true,
                     CreatedDate = DateTime.UtcNow
                 }
             );
 
-            // (Seed SuperAdmin User)
+            var adminPermissions = new List<IdentityRoleClaim<Guid>> {
+                new IdentityRoleClaim<Guid> { Id = 1, RoleId = ADMIN_ROLE_ID, ClaimType = "Permission", ClaimValue = Permissions.ViewDashboard },
+                new IdentityRoleClaim<Guid> { Id = 2, RoleId = ADMIN_ROLE_ID, ClaimType = "Permission", ClaimValue = Permissions.ViewContentTypes },
+                new IdentityRoleClaim<Guid> { Id = 3, RoleId = ADMIN_ROLE_ID, ClaimType = "Permission", ClaimValue = Permissions.CreateContentTypes },
+                new IdentityRoleClaim<Guid> { Id = 4, RoleId = ADMIN_ROLE_ID, ClaimType = "Permission", ClaimValue = Permissions.EditContentTypes },
+                new IdentityRoleClaim<Guid> { Id = 5, RoleId = ADMIN_ROLE_ID, ClaimType = "Permission", ClaimValue = Permissions.DeleteContentTypes },
+                new IdentityRoleClaim<Guid> { Id = 6, RoleId = ADMIN_ROLE_ID, ClaimType = "Permission", ClaimValue = Permissions.ViewMedia },
+                new IdentityRoleClaim<Guid> { Id = 7, RoleId = ADMIN_ROLE_ID, ClaimType = "Permission", ClaimValue = Permissions.CreateMedia },
+                new IdentityRoleClaim<Guid> { Id = 8, RoleId = ADMIN_ROLE_ID, ClaimType = "Permission", ClaimValue = Permissions.DeleteMedia },
+                new IdentityRoleClaim<Guid> { Id = 9, RoleId = ADMIN_ROLE_ID, ClaimType = "Permission", ClaimValue = Permissions.ViewSettings },
+                new IdentityRoleClaim<Guid> { Id = 10, RoleId = ADMIN_ROLE_ID, ClaimType = "Permission", ClaimValue = Permissions.EditSettings },
+                new IdentityRoleClaim<Guid> { Id = 11, RoleId = ADMIN_ROLE_ID, ClaimType = "Permission", ClaimValue = Permissions.ViewContent },
+                new IdentityRoleClaim<Guid> { Id = 12, RoleId = ADMIN_ROLE_ID, ClaimType = "Permission", ClaimValue = Permissions.CreateContent },
+                new IdentityRoleClaim<Guid> { Id = 13, RoleId = ADMIN_ROLE_ID, ClaimType = "Permission", ClaimValue = Permissions.EditContent },
+                new IdentityRoleClaim<Guid> { Id = 14, RoleId = ADMIN_ROLE_ID, ClaimType = "Permission", ClaimValue = Permissions.DeleteContent }
+            };
+            builder.Entity<IdentityRoleClaim<Guid>>().HasData(adminPermissions);
+
             var hasher = new PasswordHasher<ApplicationUser>();
             var adminUser = new ApplicationUser
             {
@@ -199,15 +201,22 @@ namespace AnosheCms.Infrastructure.Persistence.Data
             adminUser.PasswordHash = hasher.HashPassword(adminUser, "Admin@1Sg");
             builder.Entity<ApplicationUser>().HasData(adminUser);
 
-            // (Assign Role to User)
+            // ---*** اصلاح کلیدی در اینجا ***---
             builder.Entity<ApplicationUserRole>().HasData(
                 new ApplicationUserRole
                 {
                     UserId = SUPER_ADMIN_USER_ID,
-                    RoleId = SUPER_ADMIN_ROLE_ID,
+                    RoleId = SUPER_ADMIN_ROLE_ID, // <-- نقش سوپر ادمین
+                    AssignedAt = DateTime.UtcNow
+                },
+                new ApplicationUserRole
+                {
+                    UserId = SUPER_ADMIN_USER_ID,
+                    RoleId = ADMIN_ROLE_ID, // <-- (جدید) افزودن نقش ادمین برای ارث‌بری دسترسی‌ها
                     AssignedAt = DateTime.UtcNow
                 }
             );
+            // ---*** پایان اصلاح ***---
         }
     }
 }

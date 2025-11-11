@@ -1,21 +1,23 @@
 ﻿// File: Api/Controllers/AdminUsersController.cs
-using AnosheCms.Application.DTOs.Admin; // (افزودن DTOs)
+using AnosheCms.Application.DTOs.Admin;
 using AnosheCms.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
-using System.Linq; // (برای .Select)
+using System.Linq;
 using System.Threading.Tasks;
+using AnosheCms.Domain.Constants; // <-- (جدید)
 
 namespace AnosheCms.Api.Controllers
 {
     [ApiController]
     [Route("api/admin/users")]
-    [Authorize(Roles = "SuperAdmin")]
+    // [Authorize(Roles = "SuperAdmin")] // <-- حذف شد
+    [Authorize] // <-- عمومی اعمال شد
     public class AdminUsersController : ControllerBase
     {
         private readonly IUserService _userService;
-        private readonly ICurrentUserService _currentUserService; // (برای CreatedBy)
+        private readonly ICurrentUserService _currentUserService;
 
         public AdminUsersController(IUserService userService, ICurrentUserService currentUserService)
         {
@@ -23,8 +25,8 @@ namespace AnosheCms.Api.Controllers
             _currentUserService = currentUserService;
         }
 
-        // ... (GetAllUsers و GetUser بدون تغییر) ...
         [HttpGet]
+        [Authorize(Policy = Permissions.ViewUsers)] // <-- پالیسی اعمال شد
         public async Task<IActionResult> GetAllUsers()
         {
             var users = await _userService.GetAllUsersAsync();
@@ -32,6 +34,7 @@ namespace AnosheCms.Api.Controllers
         }
 
         [HttpGet("{id}")]
+        [Authorize(Policy = Permissions.ViewUsers)] // <-- پالیسی اعمال شد
         public async Task<IActionResult> GetUser(Guid id)
         {
             var user = await _userService.GetUserByIdAsync(id);
@@ -39,9 +42,8 @@ namespace AnosheCms.Api.Controllers
             return Ok(user);
         }
 
-        // --- (Endpoints جدید) ---
-
         [HttpPost]
+        [Authorize(Policy = Permissions.CreateUsers)] // <-- پالیسی اعمال شد
         public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
         {
             var (user, errors) = await _userService.CreateUserAsync(request, _currentUserService.UserId.Value);
@@ -53,6 +55,7 @@ namespace AnosheCms.Api.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Policy = Permissions.EditUsers)] // <-- پالیسی اعمال شد
         public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUserRequest request)
         {
             var (user, errors) = await _userService.UpdateUserAsync(id, request, _currentUserService.UserId.Value);
@@ -65,9 +68,9 @@ namespace AnosheCms.Api.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Policy = Permissions.DeleteUsers)] // <-- پالیسی اعمال شد
         public async Task<IActionResult> DeleteUser(Guid id)
         {
-            // (جلوگیری از حذف کاربر ادمین اصلی)
             var adminUserSeedId = Guid.Parse("d1a1b1c1-1111-4444-8888-d1a1b1c1e1f1");
             if (id == adminUserSeedId)
             {

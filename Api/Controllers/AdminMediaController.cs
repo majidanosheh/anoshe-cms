@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Threading.Tasks;
+using AnosheCms.Domain.Constants; // <-- (جدید)
 
 namespace AnosheCms.Api.Controllers
 {
@@ -21,6 +22,7 @@ namespace AnosheCms.Api.Controllers
         }
 
         [HttpGet]
+        [Authorize(Policy = Permissions.ViewMedia)] // <-- پالیسی اعمال شد
         public async Task<IActionResult> GetAllMedia()
         {
             var result = await _mediaService.GetAllMediaAsync();
@@ -28,6 +30,7 @@ namespace AnosheCms.Api.Controllers
         }
 
         [HttpGet("{id}")]
+        [Authorize(Policy = Permissions.ViewMedia)] // <-- پالیسی اعمال شد
         public async Task<IActionResult> GetMediaById(Guid id)
         {
             var result = await _mediaService.GetMediaByIdAsync(id);
@@ -36,6 +39,7 @@ namespace AnosheCms.Api.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = Permissions.CreateMedia)] // <-- پالیسی اعمال شد
         public async Task<IActionResult> UploadMedia(IFormFileCollection files)
         {
             if (files == null || files.Count == 0)
@@ -48,6 +52,7 @@ namespace AnosheCms.Api.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Policy = Permissions.DeleteMedia)] // <-- پالیسی اعمال شد
         public async Task<IActionResult> DeleteMedia(Guid id)
         {
             var success = await _mediaService.DeleteMediaAsync(id);
