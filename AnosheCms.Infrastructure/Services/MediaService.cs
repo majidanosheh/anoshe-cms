@@ -1,6 +1,4 @@
-﻿// File: AnosheCms.Infrastructure/Services/MediaService.cs
-// (تصحیح‌شده برای خطای Guid? to string)
-
+﻿// مسیر: AnosheCms.Infrastructure/Services/MediaService.cs
 using AnosheCms.Application.Interfaces;
 using AnosheCms.Domain.Entities;
 using AnosheCms.Infrastructure.Persistence.Data;
@@ -29,6 +27,8 @@ namespace AnosheCms.Infrastructure.Services
             _context = context;
             _currentUserService = currentUserService;
             _httpContextAccessor = httpContextAccessor;
+
+            // اطمینان از اینکه مسیر wwwroot به درستی تنظیم شده است
             _uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
             if (!Directory.Exists(_uploadPath))
             {
@@ -51,10 +51,11 @@ namespace AnosheCms.Infrastructure.Services
                 mediaFile.FileName,
                 mediaFile.ContentType,
                 mediaFile.Size,
-                $"{baseUrl}/uploads/{mediaFile.StoredFileName}"
+                $"{baseUrl}/uploads/{mediaFile.StoredFileName}" // (استفاده از نام فایل ذخیره شده)
             );
         }
 
+        // --- (متد اصلاح‌شده برای رفع خطای Client Projection) ---
         public async Task<List<MediaDto>> GetAllMediaAsync()
         {
             var items = await _context.MediaFiles
@@ -62,8 +63,15 @@ namespace AnosheCms.Infrastructure.Services
                 .OrderByDescending(m => m.CreatedDate)
                 .ToListAsync();
 
-            return items.Select(MapToDto).ToList();
+            // (اجرای MapToDto در حافظه برای جلوگیری از خطای HttpContext)
+            var dtos = new List<MediaDto>();
+            foreach (var item in items)
+            {
+                dtos.Add(MapToDto(item));
+            }
+            return dtos;
         }
+        // --- (پایان متد اصلاح‌شده) ---
 
         public async Task<MediaDto?> GetMediaByIdAsync(Guid id)
         {
@@ -91,7 +99,7 @@ namespace AnosheCms.Infrastructure.Services
         public async Task<List<MediaDto>> UploadMediaAsync(IFormFileCollection files)
         {
             var uploadedDtos = new List<MediaDto>();
-            var userId = _currentUserService.UserId; // (این Guid? است)
+            var userId = _currentUserService.UserId;
 
             foreach (var file in files)
             {
@@ -101,7 +109,7 @@ namespace AnosheCms.Infrastructure.Services
                 var storedFileName = $"{Guid.NewGuid()}{fileExtension}";
                 var filePath = Path.Combine(_uploadPath, storedFileName);
 
-                using (var stream = new FileStream(filePath, FileMode.Create))
+                await using (var stream = new FileStream(filePath, FileMode.Create))
                 {
                     await file.CopyToAsync(stream);
                 }
@@ -109,12 +117,10 @@ namespace AnosheCms.Infrastructure.Services
                 var mediaFile = new MediaFile
                 {
                     FileName = file.FileName,
-                    StoredFileName = storedFileName,
+                    StoredFileName = storedFileName, // (استفاده از فیلد صحیح)
                     ContentType = file.ContentType,
                     Size = file.Length,
-
-                    // ---*** (این خط تصحیح شد) ***---
-                    CreatedBy = userId // (تبدیل Guid? به string?)
+                    CreatedBy = userId
                 };
 
                 _context.MediaFiles.Add(mediaFile);

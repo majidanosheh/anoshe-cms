@@ -1,7 +1,13 @@
-﻿// File: AnosheCms.Infrastructure/Services/UserService.cs
-using AnosheCms.Application.DTOs.Admin;
+﻿// مسیر: AnosheCms.Infrastructure/Services/UserService.cs
+
+// (اصلاح‌شده - استفاده از Aliases برای رفع ابهام)
+using UserDto = AnosheCms.Application.DTOs.User.UserDto;
+using CreateUserRequest = AnosheCms.Application.DTOs.Admin.CreateUserRequest;
+using UpdateUserRequest = AnosheCms.Application.DTOs.Admin.UpdateUserRequest;
+
 using AnosheCms.Application.Interfaces;
 using AnosheCms.Domain.Entities;
+using AnosheCms.Infrastructure.Persistence.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -14,135 +20,126 @@ namespace AnosheCms.Infrastructure.Services
     public class UserService : IUserService
     {
         private readonly UserManager<ApplicationUser> _userManager;
-
         public UserService(UserManager<ApplicationUser> userManager)
         {
             _userManager = userManager;
         }
 
-        // --- (متدهای Read - که قبلاً ناقص بودند) ---
-
+        // UserDto به ...DTOs.User.UserDto اشاره دارد
         public async Task<List<UserDto>> GetAllUsersAsync()
         {
-            var users = await _userManager.Users.ToListAsync();
-            var userDtos = new List<UserDto>();
-
-            foreach (var user in users)
-            {
-                userDtos.Add(await MapToUserDto(user));
-            }
-            return userDtos;
+            return await _userManager.Users
+                .Select(u => new UserDto // بدون ابهام
+                {
+                    Id = u.Id,
+                    UserName = u.UserName,
+                    Email = u.Email,
+                    FirstName = u.FirstName,
+                    LastName = u.LastName,
+                    IsActive = u.IsActive,
+                    EmailConfirmed = u.EmailConfirmed
+                })
+                .ToListAsync();
         }
 
-        public async Task<UserDto> GetUserByIdAsync(Guid userId)
+        // UserDto به ...DTOs.User.UserDto اشاره دارد
+        public async Task<UserDto> GetUserByIdAsync(Guid id)
         {
-            var user = await _userManager.FindByIdAsync(userId.ToString());
+            var user = await _userManager.FindByIdAsync(id.ToString());
             if (user == null) return null;
 
-            return await MapToUserDto(user);
+            return MapToUserDto(user, (await _userManager.GetRolesAsync(user)).ToList());
         }
 
-        private async Task<UserDto> MapToUserDto(ApplicationUser user)
-        {
-            return new UserDto
-            {
-                Id = user.Id,
-                Email = user.Email,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                IsActive = user.IsActive,
-                EmailConfirmed = user.EmailConfirmed,
-                CreatedDate = user.CreatedDate,
-                LastLoginDate = user.LastLoginDate,
-                Roles = (await _userManager.GetRolesAsync(user)).ToList()
-            };
-        }
-
-        // --- (متدهای CUD - از پاسخ قبلی) ---
-
-        public async Task<(UserDto User, IEnumerable<string> Errors)> CreateUserAsync(CreateUserRequest request, Guid createdByUserId)
+        // CreateUserRequest به ...DTOs.Admin.CreateUserRequest اشاره دارد
+        public async Task<(UserDto? user, string[]? Errors)> CreateUserAsync(CreateUserRequest request, Guid currentUserId)
         {
             var user = new ApplicationUser
             {
-                Email = request.Email,
                 UserName = request.Email,
+                Email = request.Email,
                 FirstName = request.FirstName,
                 LastName = request.LastName,
                 IsActive = request.IsActive,
-                EmailConfirmed = true,
+                EmailConfirmed = request.EmailConfirmed,
                 CreatedDate = DateTime.UtcNow,
-                CreatedBy = createdByUserId
+                CreatedBy = currentUserId
             };
 
             var result = await _userManager.CreateAsync(user, request.Password);
             if (!result.Succeeded)
             {
-                return (null, result.Errors.Select(e => e.Description));
+                return (null, result.Errors.Select(e => e.Description).ToArray());
             }
 
-            var roleResult = await _userManager.AddToRolesAsync(user, request.Roles);
-            if (!roleResult.Succeeded)
+            if (request.Roles != null && request.Roles.Any())
             {
-                await _userManager.DeleteAsync(user);
-                return (null, roleResult.Errors.Select(e => e.Description));
+                await _userManager.AddToRolesAsync(user, request.Roles);
             }
 
-            return (await MapToUserDto(user), null);
+            return (MapToUserDto(user, request.Roles), null);
         }
 
-        public async Task<(UserDto User, IEnumerable<string> Errors)> UpdateUserAsync(Guid userIdToUpdate, UpdateUserRequest request, Guid modifiedByUserId)
+        // UpdateUserRequest به ...DTOs.Admin.UpdateUserRequest اشاره دارد
+        public async Task<(UserDto? user, string[]? Errors)> UpdateUserAsync(Guid id, UpdateUserRequest request, Guid currentUserId)
         {
-            var user = await _userManager.FindByIdAsync(userIdToUpdate.ToString());
+            var user = await _userManager.FindByIdAsync(id.ToString());
             if (user == null)
             {
-                return (null, new[] { "کاربر یافت نشد." });
+                return (null, new[] { "User not found." });
             }
 
             user.FirstName = request.FirstName;
             user.LastName = request.LastName;
             user.IsActive = request.IsActive;
+            user.EmailConfirmed = request.EmailConfirmed;
+            user.LastModifiedBy = currentUserId;
             user.LastModifiedDate = DateTime.UtcNow;
-            user.LastModifiedBy = modifiedByUserId;
 
-            var updateResult = await _userManager.UpdateAsync(user);
-            if (!updateResult.Succeeded)
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded)
             {
-                return (null, updateResult.Errors.Select(e => e.Description));
+                return (null, result.Errors.Select(e => e.Description).ToArray());
             }
 
             var currentRoles = await _userManager.GetRolesAsync(user);
-            var rolesToRemove = currentRoles.Except(request.Roles).ToList();
-            var rolesToAdd = request.Roles.Except(currentRoles).ToList();
+            var rolesToAdd = request.Roles.Except(currentRoles);
+            var rolesToRemove = currentRoles.Except(request.Roles);
 
-            if (rolesToRemove.Any())
-            {
-                var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
-                if (!removeResult.Succeeded)
-                    return (null, removeResult.Errors.Select(e => e.Description));
-            }
+            await _userManager.AddToRolesAsync(user, rolesToAdd);
+            await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
 
-            if (rolesToAdd.Any())
-            {
-                var addResult = await _userManager.AddToRolesAsync(user, rolesToAdd);
-                if (!addResult.Succeeded)
-                    return (null, addResult.Errors.Select(e => e.Description));
-            }
-
-            return (await MapToUserDto(user), null);
+            return (MapToUserDto(user, request.Roles), null);
         }
 
-        public async Task<bool> DeleteUserAsync(Guid userIdToDelete, Guid deletedByUserId)
+        public async Task<bool> DeleteUserAsync(Guid id, Guid currentUserId)
         {
-            var user = await _userManager.FindByIdAsync(userIdToDelete.ToString());
+            var user = await _userManager.FindByIdAsync(id.ToString());
             if (user == null) return false;
 
             user.IsDeleted = true;
-            user.IsActive = false;
-            user.DeletedBy = deletedByUserId;
             user.DeletedDate = DateTime.UtcNow;
+            user.DeletedBy = currentUserId;
 
             var result = await _userManager.UpdateAsync(user);
             return result.Succeeded;
+        }
+
+        // --- Helper ---
+        // UserDto به ...DTOs.User.UserDto اشاره دارد
+        private UserDto MapToUserDto(ApplicationUser user, List<string> roles)
+        {
+            return new UserDto
+            {
+                Id = user.Id,
+                UserName = user.UserName,
+                Email = user.Email,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                IsActive = user.IsActive,
+                EmailConfirmed = user.EmailConfirmed,
+                Roles = roles ?? new List<string>()
+            };
         }
     }
 }

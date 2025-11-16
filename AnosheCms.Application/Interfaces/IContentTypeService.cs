@@ -1,22 +1,19 @@
-// File: AnosheCms.Application/Interfaces/IContentTypeService.cs
+using AnosheCms.Application.DTOs.ContentType;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace AnosheCms.Application.Interfaces
 {
-    public record CreateContentTypeDto(string Name, string ApiSlug);
-    public record CreateContentFieldDto(string Name, string ApiSlug, string FieldType, bool IsRequired, string? Settings);
-    public record ContentFieldDto(Guid Id, string Name, string ApiSlug, string FieldType, bool IsRequired, string? Settings);
-    public record ContentTypeDto(Guid Id, string Name, string ApiSlug, List<ContentFieldDto> Fields);
-
     public interface IContentTypeService
     {
         Task<ContentTypeDto?> CreateContentTypeAsync(CreateContentTypeDto dto);
         Task<ContentTypeDto?> GetContentTypeBySlugAsync(string apiSlug);
         Task<List<ContentTypeDto>> GetAllContentTypesAsync();
-        Task<ContentFieldDto?> AddFieldToContentTypeAsync(Guid contentTypeId, CreateContentFieldDto dto);
         Task<bool> DeleteContentTypeAsync(Guid id);
-        Task<bool> DeleteContentFieldAsync(Guid fieldId);
+        Task<ContentFieldDto?> AddFieldToContentTypeAsync(Guid contentTypeId, CreateContentFieldDto dto);
+
+        // (اصلاح شد) نام متد برای مطابقت با کنترلر تغییر کرد
+        Task<bool> DeleteContentFieldAsync(Guid contentTypeId, Guid fieldId);
     }
 }

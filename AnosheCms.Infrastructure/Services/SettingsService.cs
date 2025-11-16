@@ -1,4 +1,6 @@
 ﻿// File: AnosheCms.Infrastructure/Services/SettingsService.cs
+using AnosheCms.Application.DTOs.ContentEntry;
+using AnosheCms.Application.DTOs.ContentType;
 using AnosheCms.Application.Interfaces;
 using AnosheCms.Domain.Entities;
 using AnosheCms.Infrastructure.Persistence.Data;
@@ -7,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using ContentEntryCreateDto = AnosheCms.Application.Interfaces.ContentEntryCreateDto;
 
 namespace AnosheCms.Infrastructure.Services
 {
@@ -54,7 +57,8 @@ namespace AnosheCms.Infrastructure.Services
             var contentType = await _contentTypeService.GetContentTypeBySlugAsync(contentTypeSlug);
             if (contentType == null)
             {
-                // حالت خاص: اگر نوع محتوای "global-settings" وجود نداشته باشد، آن را ایجاد می‌کند.
+                //CreateContentTypeDto باعث ارور شده
+
                 var newContentType = await _contentTypeService.CreateContentTypeAsync(new CreateContentTypeDto("Global Settings", contentTypeSlug));
                 if (newContentType == null)
                 {
@@ -62,8 +66,11 @@ namespace AnosheCms.Infrastructure.Services
                 }
                 // اضافه کردن چند فیلد پیش‌فرض برای نمونه
                 await _contentTypeService.AddFieldToContentTypeAsync(newContentType.Id,
+                    //CreateContentFieldDto باعث ارور شده
                     new CreateContentFieldDto("Site Title", "site_title", "Text", true, null));
                 await _contentTypeService.AddFieldToContentTypeAsync(newContentType.Id,
+                    //CreateContentFieldDto باعث ارور شده
+
                     new CreateContentFieldDto("Site Logo URL", "site_logo", "Media", false, null));
             }
 

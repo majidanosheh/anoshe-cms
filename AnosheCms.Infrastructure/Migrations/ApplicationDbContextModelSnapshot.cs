@@ -84,7 +84,7 @@ namespace AnosheCms.Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("a1b1c1d1-1111-4444-8888-a1b1c1d1e1f1"),
-                            CreatedDate = new DateTime(2025, 11, 9, 6, 57, 14, 688, DateTimeKind.Utc).AddTicks(4347),
+                            CreatedDate = new DateTime(2025, 11, 15, 11, 55, 14, 657, DateTimeKind.Utc).AddTicks(889),
                             Description = "دسترسی کامل به تمام سیستم",
                             DisplayName = "سوپر ادمین",
                             IsDeleted = false,
@@ -95,7 +95,7 @@ namespace AnosheCms.Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("a2b2c2d2-2222-4444-8888-a2b2c2d2e2f2"),
-                            CreatedDate = new DateTime(2025, 11, 9, 6, 57, 14, 688, DateTimeKind.Utc).AddTicks(4349),
+                            CreatedDate = new DateTime(2025, 11, 15, 11, 55, 14, 657, DateTimeKind.Utc).AddTicks(891),
                             Description = "دسترسی به بخش مدیریت محتوا و ساختار",
                             DisplayName = "ادمین",
                             IsDeleted = false,
@@ -106,7 +106,7 @@ namespace AnosheCms.Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("a3b3c3d3-3333-4444-8888-a3b3c3d3e3f3"),
-                            CreatedDate = new DateTime(2025, 11, 9, 6, 57, 14, 688, DateTimeKind.Utc).AddTicks(4351),
+                            CreatedDate = new DateTime(2025, 11, 15, 11, 55, 14, 657, DateTimeKind.Utc).AddTicks(893),
                             Description = "دسترسی پایه (در صورت نیاز)",
                             DisplayName = "کاربر",
                             IsDeleted = false,
@@ -230,8 +230,8 @@ namespace AnosheCms.Infrastructure.Migrations
                         {
                             Id = new Guid("d1a1b1c1-1111-4444-8888-d1a1b1c1e1f1"),
                             AccessFailedCount = 0,
-                            ConcurrencyStamp = "93f86288-8dc2-479d-97eb-2f5b17fd6e86",
-                            CreatedDate = new DateTime(2025, 11, 9, 6, 57, 14, 688, DateTimeKind.Utc).AddTicks(4558),
+                            ConcurrencyStamp = "7c7bcbe9-43a3-4a1d-9a80-7e106eb089f1",
+                            CreatedDate = new DateTime(2025, 11, 15, 11, 55, 14, 657, DateTimeKind.Utc).AddTicks(1120),
                             Email = "admin@system.com",
                             EmailConfirmed = true,
                             FirstName = "System",
@@ -241,9 +241,9 @@ namespace AnosheCms.Infrastructure.Migrations
                             LockoutEnabled = false,
                             NormalizedEmail = "ADMIN@SYSTEM.COM",
                             NormalizedUserName = "ADMIN@SYSTEM.COM",
-                            PasswordHash = "AQAAAAIAAYagAAAAEHP3HfKmnpd2ZeFH6saIopMqslM5icYWABSSKvnizmJvjwIkL34SlISPvFdsvwabHw==",
+                            PasswordHash = "AQAAAAIAAYagAAAAED2CHS9+EL7WDXS2Rk1e9ggmgHow4Ng2OeD1CAPmGlxVn0WgXNeYt3AKGnhQ1/nCkQ==",
                             PhoneNumberConfirmed = false,
-                            SecurityStamp = "cd827655-7986-4fca-8c7d-0f955d2c0b0e",
+                            SecurityStamp = "cbf44a5f-1b4e-47a3-b55d-db1b67ed67d1",
                             TwoFactorEnabled = false,
                             UserName = "admin@system.com"
                         });
@@ -274,7 +274,13 @@ namespace AnosheCms.Infrastructure.Migrations
                         {
                             UserId = new Guid("d1a1b1c1-1111-4444-8888-d1a1b1c1e1f1"),
                             RoleId = new Guid("a1b1c1d1-1111-4444-8888-a1b1c1d1e1f1"),
-                            AssignedAt = new DateTime(2025, 11, 9, 6, 57, 14, 756, DateTimeKind.Utc).AddTicks(5562)
+                            AssignedAt = new DateTime(2025, 11, 15, 11, 55, 14, 723, DateTimeKind.Utc).AddTicks(4252)
+                        },
+                        new
+                        {
+                            UserId = new Guid("d1a1b1c1-1111-4444-8888-d1a1b1c1e1f1"),
+                            RoleId = new Guid("a2b2c2d2-2222-4444-8888-a2b2c2d2e2f2"),
+                            AssignedAt = new DateTime(2025, 11, 15, 11, 55, 14, 723, DateTimeKind.Utc).AddTicks(4254)
                         });
                 });
 
@@ -465,6 +471,149 @@ namespace AnosheCms.Infrastructure.Migrations
                     b.ToTable("ContentTypes");
                 });
 
+            modelBuilder.Entity("AnosheCms.Domain.Entities.Form", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApiSlug")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("LastModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("LastModifiedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApiSlug")
+                        .IsUnique();
+
+                    b.ToTable("Forms");
+                });
+
+            modelBuilder.Entity("AnosheCms.Domain.Entities.FormField", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FieldType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("FormId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("LastModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("LastModifiedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Settings")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FormId");
+
+                    b.ToTable("FormFields");
+                });
+
+            modelBuilder.Entity("AnosheCms.Domain.Entities.FormSubmission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("FormId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("LastModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("LastModifiedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SubmissionData")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FormId");
+
+                    b.ToTable("FormSubmissions");
+                });
+
             modelBuilder.Entity("AnosheCms.Domain.Entities.MediaFile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -488,6 +637,17 @@ namespace AnosheCms.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FilePath")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("FileType")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -682,6 +842,106 @@ namespace AnosheCms.Infrastructure.Migrations
                     b.HasIndex("RoleId");
 
                     b.ToTable("RoleClaims", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            ClaimType = "Permission",
+                            ClaimValue = "Permissions.Dashboard.View",
+                            RoleId = new Guid("a2b2c2d2-2222-4444-8888-a2b2c2d2e2f2")
+                        },
+                        new
+                        {
+                            Id = 2,
+                            ClaimType = "Permission",
+                            ClaimValue = "Permissions.ContentTypes.View",
+                            RoleId = new Guid("a2b2c2d2-2222-4444-8888-a2b2c2d2e2f2")
+                        },
+                        new
+                        {
+                            Id = 3,
+                            ClaimType = "Permission",
+                            ClaimValue = "Permissions.ContentTypes.Create",
+                            RoleId = new Guid("a2b2c2d2-2222-4444-8888-a2b2c2d2e2f2")
+                        },
+                        new
+                        {
+                            Id = 4,
+                            ClaimType = "Permission",
+                            ClaimValue = "Permissions.ContentTypes.Edit",
+                            RoleId = new Guid("a2b2c2d2-2222-4444-8888-a2b2c2d2e2f2")
+                        },
+                        new
+                        {
+                            Id = 5,
+                            ClaimType = "Permission",
+                            ClaimValue = "Permissions.ContentTypes.Delete",
+                            RoleId = new Guid("a2b2c2d2-2222-4444-8888-a2b2c2d2e2f2")
+                        },
+                        new
+                        {
+                            Id = 6,
+                            ClaimType = "Permission",
+                            ClaimValue = "Permissions.Media.View",
+                            RoleId = new Guid("a2b2c2d2-2222-4444-8888-a2b2c2d2e2f2")
+                        },
+                        new
+                        {
+                            Id = 7,
+                            ClaimType = "Permission",
+                            ClaimValue = "Permissions.Media.Create",
+                            RoleId = new Guid("a2b2c2d2-2222-4444-8888-a2b2c2d2e2f2")
+                        },
+                        new
+                        {
+                            Id = 8,
+                            ClaimType = "Permission",
+                            ClaimValue = "Permissions.Media.Delete",
+                            RoleId = new Guid("a2b2c2d2-2222-4444-8888-a2b2c2d2e2f2")
+                        },
+                        new
+                        {
+                            Id = 9,
+                            ClaimType = "Permission",
+                            ClaimValue = "Permissions.Settings.View",
+                            RoleId = new Guid("a2b2c2d2-2222-4444-8888-a2b2c2d2e2f2")
+                        },
+                        new
+                        {
+                            Id = 10,
+                            ClaimType = "Permission",
+                            ClaimValue = "Permissions.Settings.Edit",
+                            RoleId = new Guid("a2b2c2d2-2222-4444-8888-a2b2c2d2e2f2")
+                        },
+                        new
+                        {
+                            Id = 11,
+                            ClaimType = "Permission",
+                            ClaimValue = "Permissions.Content.View",
+                            RoleId = new Guid("a2b2c2d2-2222-4444-8888-a2b2c2d2e2f2")
+                        },
+                        new
+                        {
+                            Id = 12,
+                            ClaimType = "Permission",
+                            ClaimValue = "Permissions.Content.Create",
+                            RoleId = new Guid("a2b2c2d2-2222-4444-8888-a2b2c2d2e2f2")
+                        },
+                        new
+                        {
+                            Id = 13,
+                            ClaimType = "Permission",
+                            ClaimValue = "Permissions.Content.Edit",
+                            RoleId = new Guid("a2b2c2d2-2222-4444-8888-a2b2c2d2e2f2")
+                        },
+                        new
+                        {
+                            Id = 14,
+                            ClaimType = "Permission",
+                            ClaimValue = "Permissions.Content.Delete",
+                            RoleId = new Guid("a2b2c2d2-2222-4444-8888-a2b2c2d2e2f2")
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
@@ -740,6 +1000,9 @@ namespace AnosheCms.Infrastructure.Migrations
                     b.Property<string>("Name")
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<DateTime?>("ExpiryDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Value")
                         .HasColumnType("nvarchar(max)");
 
@@ -781,12 +1044,34 @@ namespace AnosheCms.Infrastructure.Migrations
             modelBuilder.Entity("AnosheCms.Domain.Entities.ContentItem", b =>
                 {
                     b.HasOne("AnosheCms.Domain.Entities.ContentType", "ContentType")
-                        .WithMany()
+                        .WithMany("ContentItems")
                         .HasForeignKey("ContentTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("ContentType");
+                });
+
+            modelBuilder.Entity("AnosheCms.Domain.Entities.FormField", b =>
+                {
+                    b.HasOne("AnosheCms.Domain.Entities.Form", "Form")
+                        .WithMany("Fields")
+                        .HasForeignKey("FormId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Form");
+                });
+
+            modelBuilder.Entity("AnosheCms.Domain.Entities.FormSubmission", b =>
+                {
+                    b.HasOne("AnosheCms.Domain.Entities.Form", "Form")
+                        .WithMany("Submissions")
+                        .HasForeignKey("FormId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Form");
                 });
 
             modelBuilder.Entity("AnosheCms.Domain.Entities.RefreshToken", b =>
@@ -876,7 +1161,16 @@ namespace AnosheCms.Infrastructure.Migrations
 
             modelBuilder.Entity("AnosheCms.Domain.Entities.ContentType", b =>
                 {
+                    b.Navigation("ContentItems");
+
                     b.Navigation("Fields");
+                });
+
+            modelBuilder.Entity("AnosheCms.Domain.Entities.Form", b =>
+                {
+                    b.Navigation("Fields");
+
+                    b.Navigation("Submissions");
                 });
 #pragma warning restore 612, 618
         }

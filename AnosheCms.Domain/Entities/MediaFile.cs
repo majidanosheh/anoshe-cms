@@ -12,5 +12,9 @@ namespace AnosheCms.Domain.Entities
         public string StoredFileName { get; set; } = string.Empty;
         public string ContentType { get; set; } = string.Empty;
         public long Size { get; set; }
+
+        public string FilePath { get; set; } // (مورد نیاز خطای 203.txt)
+        public long FileSize { get; set; }   // (مورد نیاز خطای 203.txt)
+        public string FileType { get; set; }
     }
 }

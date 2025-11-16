@@ -1,4 +1,4 @@
-﻿// File: AnosheCms.Application/Interfaces/IContentEntryService.cs
+﻿// مسیر: AnosheCms.Application/Interfaces/IContentEntryService.cs
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -10,6 +10,7 @@ namespace AnosheCms.Application.Interfaces
         string Status
     );
 
+    // (تعریف DTO به عنوان رکورد 7 آرگومانی)
     public record ContentEntryDto(
         Guid Id,
         Guid ContentTypeId,
@@ -22,6 +23,7 @@ namespace AnosheCms.Application.Interfaces
 
     public interface IContentEntryService
     {
+        // (امضای متد با نام‌های Dto و ErrorMessage)
         Task<List<ContentEntryDto>> GetContentEntriesAsync(string contentTypeSlug);
         Task<ContentEntryDto?> GetContentEntryByIdAsync(string contentTypeSlug, Guid itemId);
         Task<(ContentEntryDto? Dto, string? ErrorMessage)> CreateContentEntryAsync(string contentTypeSlug, ContentEntryCreateDto dto);

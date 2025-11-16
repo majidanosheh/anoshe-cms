@@ -23,7 +23,7 @@ namespace AnosheCms.Domain.Entities
         /// لیستی از فیلدهای تعریف شده برای این نوع محتوا
         /// </summary>
         public virtual ICollection<ContentField> Fields { get; set; } = new List<ContentField>();
-
+        public virtual ICollection<ContentItem> ContentItems { get; set; }
         // TODO: در آینده، لیستی از ContentItem های واقعی را اضافه خواهیم کرد
         // public virtual ICollection<ContentItem> Items { get; set; } = new List<ContentItem>();
     }

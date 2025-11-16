@@ -1,4 +1,4 @@
-﻿// File: AnosheCms.Domain/Common/AuditableBaseEntity.cs
+﻿// مسیر: AnosheCms.Domain/Common/AuditableBaseEntity.cs
 using AnosheCms.Domain.Common;
 using System;
 
@@ -15,7 +15,10 @@ namespace AnosheCms.Domain.Common
         public Guid? LastModifiedBy { get; set; }
 
         // --- ISoftDelete ---
-        public bool IsDeleted { get; set; }
+
+        // (اصلاح کلیدی: افزودن مقدار پیش‌فرض = false)
+        public bool IsDeleted { get; set; } = false;
+
         public DateTime? DeletedDate { get; set; }
         public Guid? DeletedBy { get; set; }
     }

@@ -35,5 +35,11 @@ namespace AnosheCms.Domain.Constants
         public const string EditRoles = "Permissions.Roles.Edit";
         public const string DeleteRoles = "Permissions.Roles.Delete";
         public const string ManagePermissions = "Permissions.Roles.ManagePermissions";
+        // --- دسترسی‌های ماژول فرم‌ساز ---
+        public const string ViewForms = "Permissions.Forms.View";
+        public const string CreateForms = "Permissions.Forms.Create";
+        public const string EditForms = "Permissions.Forms.Edit";
+        public const string DeleteForms = "Permissions.Forms.Delete";
+        public const string ViewSubmissions = "Permissions.Forms.ViewSubmissions";
     }
 }

@@ -1,11 +1,11 @@
-﻿// File: Api/Controllers/AdminMediaController.cs
+﻿// مسیر: Api/Controllers/AdminMediaController.cs
 using AnosheCms.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Threading.Tasks;
-using AnosheCms.Domain.Constants; // <-- (جدید)
+using AnosheCms.Domain.Constants; // (اطمینان از وجود using)
 
 namespace AnosheCms.Api.Controllers
 {
@@ -22,7 +22,7 @@ namespace AnosheCms.Api.Controllers
         }
 
         [HttpGet]
-        [Authorize(Policy = Permissions.ViewMedia)] // <-- پالیسی اعمال شد
+        [Authorize(Policy = Permissions.ViewMedia)]
         public async Task<IActionResult> GetAllMedia()
         {
             var result = await _mediaService.GetAllMediaAsync();
@@ -30,7 +30,7 @@ namespace AnosheCms.Api.Controllers
         }
 
         [HttpGet("{id}")]
-        [Authorize(Policy = Permissions.ViewMedia)] // <-- پالیسی اعمال شد
+        [Authorize(Policy = Permissions.ViewMedia)]
         public async Task<IActionResult> GetMediaById(Guid id)
         {
             var result = await _mediaService.GetMediaByIdAsync(id);
@@ -39,7 +39,7 @@ namespace AnosheCms.Api.Controllers
         }
 
         [HttpPost]
-        [Authorize(Policy = Permissions.CreateMedia)] // <-- پالیسی اعمال شد
+        [Authorize(Policy = Permissions.CreateMedia)]
         public async Task<IActionResult> UploadMedia(IFormFileCollection files)
         {
             if (files == null || files.Count == 0)
@@ -47,12 +47,14 @@ namespace AnosheCms.Api.Controllers
                 return BadRequest(new { message = "هیچ فایلی برای آپلود انتخاب نشده است." });
             }
 
+            // (سرویس جدید لیستی از DTOها را برمی‌گرداند)
             var result = await _mediaService.UploadMediaAsync(files);
+
             return Ok(result);
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Policy = Permissions.DeleteMedia)] // <-- پالیسی اعمال شد
+        [Authorize(Policy = Permissions.DeleteMedia)]
         public async Task<IActionResult> DeleteMedia(Guid id)
         {
             var success = await _mediaService.DeleteMediaAsync(id);

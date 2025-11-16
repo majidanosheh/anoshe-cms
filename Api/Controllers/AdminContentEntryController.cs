@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Threading.Tasks;
-using AnosheCms.Domain.Constants; // <-- (جدید)
+using AnosheCms.Domain.Constants;
+using AnosheCms.Application.DTOs.ContentEntry;
+using ContentEntryCreateDto = AnosheCms.Application.Interfaces.ContentEntryCreateDto; // <-- (جدید)
 
 namespace AnosheCms.Api.Controllers
 {

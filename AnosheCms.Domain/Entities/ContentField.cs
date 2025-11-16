@@ -39,5 +39,7 @@ namespace AnosheCms.Domain.Entities
         /// </summary>
         public Guid ContentTypeId { get; set; }
         public virtual ContentType ContentType { get; set; }
+
+
     }
 }

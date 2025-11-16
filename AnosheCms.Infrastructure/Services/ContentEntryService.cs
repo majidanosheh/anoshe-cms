@@ -1,6 +1,4 @@
-﻿// File: AnosheCms.Infrastructure/Services/ContentEntryService.cs
-// (تصحیح‌شده برای خطای Client Projection)
-
+﻿// مسیر: AnosheCms.Infrastructure/Services/ContentEntryService.cs
 using AnosheCms.Application.Interfaces;
 using AnosheCms.Domain.Entities;
 using AnosheCms.Infrastructure.Persistence.Data;
@@ -9,10 +7,17 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-
+using AnosheCms.Application.Interfaces;
+using AnosheCms.Domain.Entities;
+using AnosheCms.Infrastructure.Persistence.Data;
+using Microsoft.EntityFrameworkCore; // <-- (این احتمالاً گم شده)
+using System;                         // <-- (این احتمالاً گم شده)
+using System.Collections.Generic;     // <-- (این احتمالاً گم شده)
+using System.Linq;                    // <-- (این احتمالاً گم شده)
+using System.Threading.Tasks;
 namespace AnosheCms.Infrastructure.Services
 {
-    public class ContentEntryService : IContentEntryService
+    public class ContentEntryService : IContentEntryService // (پیاده‌سازی اینترفیس)
     {
         private readonly ApplicationDbContext _context;
         public ContentEntryService(ApplicationDbContext context)
@@ -20,38 +25,22 @@ namespace AnosheCms.Infrastructure.Services
             _context = context;
         }
 
-        // (متدهای کمکی بدون تغییر)
-        private async Task<ContentType?> GetContentTypeWithFields(string contentTypeSlug)
-        {
-            return await _context.ContentTypes
-                .Include(ct => ct.Fields.Where(f => !f.IsDeleted))
-                .FirstOrDefaultAsync(ct => ct.ApiSlug == contentTypeSlug && !ct.IsDeleted);
-        }
-
-        private string? ValidateContentData(ContentType contentType, Dictionary<string, object> contentData)
-        {
-            foreach (var field in contentType.Fields.Where(f => f.IsRequired))
-            {
-                if (!contentData.ContainsKey(field.ApiSlug) || contentData[field.ApiSlug] == null ||
-                    (contentData[field.ApiSlug] is string s && string.IsNullOrWhiteSpace(s)))
-                {
-                    return $"فیلد اجباری '{field.Name}' مقداردهی نشده است.";
-                }
-            }
-            return null;
-        }
-
+        // --- (متد MapToDto که اکنون با رکورد 7 آرگومانی مطابقت دارد) ---
         private ContentEntryDto MapToDto(ContentItem item)
         {
             return new ContentEntryDto(
-                item.Id, item.ContentTypeId, item.Status, item.CreatedDate,
-                item.CreatedBy.ToString(), item.LastModifiedDate, item.ContentData
+                item.Id,
+                item.ContentTypeId,
+                item.Status,
+                item.CreatedDate,
+                item.CreatedBy.ToString(), // (Guid? به string? تبدیل می‌شود)
+                item.LastModifiedDate,
+                item.ContentData
             );
         }
 
-        // --- متدهای ادمین ---
+        // --- (امضاهای متد که اکنون با اینترفیس مطابقت دارند) ---
 
-        // ... (متدهای Create, Update, Delete, GetById بدون تغییر هستند چون Select ندارند) ...
         public async Task<(ContentEntryDto? Dto, string? ErrorMessage)> CreateContentEntryAsync(string contentTypeSlug, ContentEntryCreateDto dto)
         {
             var contentType = await GetContentTypeWithFields(contentTypeSlug);
@@ -93,34 +82,32 @@ namespace AnosheCms.Infrastructure.Services
             return item == null ? null : MapToDto(item);
         }
 
+        // --- (متدهای اصلاح‌شده برای رفع Client Projection) ---
 
-        // --- *** متد تصحیح‌شده (خطای 170.txt) *** ---
         public async Task<List<ContentEntryDto>> GetContentEntriesAsync(string contentTypeSlug)
         {
-            // 1. ابتدا داده‌ها را از دیتابیس واکشی کن
+            // ۱. اجرا در دیتابیس
             var itemsFromDb = await _context.ContentItems.AsNoTracking()
                 .Where(ci => ci.ContentType.ApiSlug == contentTypeSlug)
                 .OrderByDescending(ci => ci.CreatedDate)
-                .ToListAsync(); // <-- .ToListAsync() قبل از .Select() فراخوانی می‌شود
+                .ToListAsync(); // <-- .ToListAsync() اول اجرا می‌شود
 
-            // 2. حالا در حافظه (Client-side) آن‌ها را Map کن
+            // ۲. اجرا در حافظه
             return itemsFromDb.Select(item => MapToDto(item)).ToList();
         }
 
-        // --- *** متد تصحیح‌شده (خطای 170.txt) *** ---
         public async Task<List<ContentEntryDto>> GetPublishedContentEntriesAsync(string contentTypeSlug)
         {
-            // 1. ابتدا داده‌ها را از دیتابیس واکشی کن
+            // ۱. اجرا در دیتابیس
             var itemsFromDb = await _context.ContentItems.AsNoTracking()
                 .Where(ci => ci.ContentType.ApiSlug == contentTypeSlug && ci.Status == "Published")
                 .OrderByDescending(ci => ci.CreatedDate)
-                .ToListAsync(); // <-- .ToListAsync() قبل از .Select() فراخوانی می‌شود
+                .ToListAsync(); // <-- .ToListAsync() اول اجرا می‌شود
 
-            // 2. حالا در حافظه (Client-side) آن‌ها را Map کن
+            // ۲. اجرا در حافظه
             return itemsFromDb.Select(item => MapToDto(item)).ToList();
         }
 
-        // --- (متد GetPublishedContentEntryAsync از قبل درست بود) ---
         public async Task<ContentEntryDto?> GetPublishedContentEntryAsync(string contentTypeSlug, string itemApiSlug)
         {
             if (Guid.TryParse(itemApiSlug, out Guid itemId))
@@ -128,6 +115,26 @@ namespace AnosheCms.Infrastructure.Services
                 var item = await _context.ContentItems.AsNoTracking()
                    .FirstOrDefaultAsync(ci => ci.ContentType.ApiSlug == contentTypeSlug && ci.Status == "Published" && ci.Id == itemId);
                 return item == null ? null : MapToDto(item);
+            }
+            return null;
+        }
+
+        // --- (متدهای کمکی خصوصی) ---
+        private async Task<ContentType?> GetContentTypeWithFields(string contentTypeSlug)
+        {
+            return await _context.ContentTypes
+                .Include(ct => ct.Fields.Where(f => !f.IsDeleted))
+                .FirstOrDefaultAsync(ct => ct.ApiSlug == contentTypeSlug && !ct.IsDeleted);
+        }
+
+        private string? ValidateContentData(ContentType contentType, Dictionary<string, object> contentData)
+        {
+            foreach (var field in contentType.Fields.Where(f => f.IsRequired))
+            {
+                if (!contentData.ContainsKey(field.ApiSlug) || contentData[field.ApiSlug] == null || (contentData[field.ApiSlug] is string s && string.IsNullOrWhiteSpace(s)))
+                {
+                    return $"فیلد اجباری '{field.Name}' مقداردهی نشده است.";
+                }
             }
             return null;
         }

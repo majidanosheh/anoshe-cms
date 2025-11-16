@@ -1,4 +1,4 @@
-﻿// File: AnosheCms.Infrastructure/Services/ContentTypeService.cs
+﻿using AnosheCms.Application.DTOs.ContentType;
 using AnosheCms.Application.Interfaces;
 using AnosheCms.Domain.Entities;
 using AnosheCms.Infrastructure.Persistence.Data;
@@ -19,92 +19,131 @@ namespace AnosheCms.Infrastructure.Services
             _context = context;
         }
 
-        // (متدهای Create, AddField, Delete ... بدون تغییر از قبل)
         public async Task<ContentTypeDto?> CreateContentTypeAsync(CreateContentTypeDto dto)
         {
-            if (await _context.ContentTypes.AnyAsync(ct => ct.ApiSlug == dto.ApiSlug)) return null;
-            var contentType = new ContentType { Name = dto.Name, ApiSlug = dto.ApiSlug };
-            _context.ContentTypes.Add(contentType);
+            if (await _context.ContentTypes.AnyAsync(ct => ct.ApiSlug == dto.ApiSlug))
+            {
+                return null; // Slug exists
+            }
+
+            var contentType = new ContentType
+            {
+                Id = Guid.NewGuid(),
+                Name = dto.Name,
+                ApiSlug = dto.ApiSlug
+            };
+
+            await _context.ContentTypes.AddAsync(contentType);
             await _context.SaveChangesAsync();
-            return MapToContentTypeDto(contentType);
+
+            return MapToDto(contentType);
+        }
+
+        public async Task<ContentTypeDto?> GetContentTypeBySlugAsync(string apiSlug)
+        {
+            var contentType = await _context.ContentTypes
+                .AsNoTracking()
+                .Include(ct => ct.Fields)
+                .FirstOrDefaultAsync(ct => ct.ApiSlug == apiSlug);
+
+            return contentType == null ? null : MapToDto(contentType);
+        }
+
+       
+        public async Task<List<ContentTypeDto>> GetAllContentTypesAsync()
+        {
+            // ۱. ابتدا داده‌ها را از دیتابیس به حافظه می‌آوریم
+            var contentTypesFromDb = await _context.ContentTypes
+                .AsNoTracking()
+                .Include(ct => ct.Fields) // (یا .Where(f => !f.IsDeleted) اگر فیلتر دارید)
+                .OrderBy(ct => ct.Name)
+                .ToListAsync(); // <-- .ToListAsync() به اینجا منتقل شد
+
+            // ۲. اکنون در حافظه (Client-side) آن‌ها را Map می‌کنیم
+            // (مطمئن شوید که نام متد Map شما "MapToDto" است)
+            return contentTypesFromDb.Select(ct => MapToDto(ct)).ToList();
+        }
+        public async Task<bool> DeleteContentTypeAsync(Guid id)
+        {
+            var contentType = await _context.ContentTypes
+                .Include(ct => ct.ContentItems)
+                .Include(ct => ct.Fields)
+                .FirstOrDefaultAsync(ct => ct.Id == id);
+
+            if (contentType == null) return false;
+
+            foreach (var item in contentType.ContentItems)
+            {
+                _context.ContentItems.Remove(item);
+            }
+            foreach (var field in contentType.Fields)
+            {
+                _context.ContentFields.Remove(field);
+            }
+
+            _context.ContentTypes.Remove(contentType);
+
+            return await _context.SaveChangesAsync() > 0;
         }
 
         public async Task<ContentFieldDto?> AddFieldToContentTypeAsync(Guid contentTypeId, CreateContentFieldDto dto)
         {
             var contentType = await _context.ContentTypes.FindAsync(contentTypeId);
             if (contentType == null) return null;
-            if (await _context.ContentFields.AnyAsync(cf => cf.ContentTypeId == contentTypeId && cf.ApiSlug == dto.ApiSlug)) return null;
-            var contentField = new ContentField
+
+            var field = new ContentField
             {
+                Id = Guid.NewGuid(),
+                ContentTypeId = contentTypeId,
                 Name = dto.Name,
                 ApiSlug = dto.ApiSlug,
                 FieldType = dto.FieldType,
-                IsRequired = dto.IsRequired,
-                Settings = dto.Settings,
-                ContentTypeId = contentTypeId
+                IsRequired = dto.IsRequired
+                // (توجه: فیلد پنجم 'Options' که در DTO بود، در Entity ذخیره نمی‌شود)
+                // (این برای پیاده‌سازی‌های آینده است)
             };
-            _context.ContentFields.Add(contentField);
+
+            await _context.ContentFields.AddAsync(field);
             await _context.SaveChangesAsync();
-            return MapToContentFieldDto(contentField);
+
+            return MapToFieldDto(field);
         }
 
-        public async Task<bool> DeleteContentTypeAsync(Guid id)
+        // (اصلاح شد) نام متد برای مطابقت با کنترلر تغییر کرد
+        public async Task<bool> DeleteContentFieldAsync(Guid contentTypeId, Guid fieldId)
         {
-            var contentType = await _context.ContentTypes.FindAsync(id);
-            if (contentType == null) return false;
-            _context.ContentTypes.Remove(contentType);
-            await _context.SaveChangesAsync();
-            return true;
+            var field = await _context.ContentFields
+                .FirstOrDefaultAsync(f => f.Id == fieldId && f.ContentTypeId == contentTypeId);
+
+            if (field == null) return false;
+
+            _context.ContentFields.Remove(field);
+            return await _context.SaveChangesAsync() > 0;
         }
 
-        public async Task<bool> DeleteContentFieldAsync(Guid fieldId)
+
+        // --- Helpers ---
+        private ContentTypeDto MapToDto(ContentType ct)
         {
-            var contentField = await _context.ContentFields.FindAsync(fieldId);
-            if (contentField == null) return false;
-            _context.ContentFields.Remove(contentField);
-            await _context.SaveChangesAsync();
-            return true;
+            return new ContentTypeDto
+            {
+                Id = ct.Id,
+                Name = ct.Name,
+                ApiSlug = ct.ApiSlug,
+                Fields = ct.Fields?.Select(MapToFieldDto).ToList() ?? new List<ContentFieldDto>()
+            };
         }
 
-        // ---*** شروع بخش اصلاح‌شده (رفع خطای 165.txt) ***---
-        public async Task<List<ContentTypeDto>> GetAllContentTypesAsync()
+        private ContentFieldDto MapToFieldDto(ContentField f)
         {
-            // ۱. ابتدا داده‌ها را از دیتابیس به حافظه می‌آوریم
-            var contentTypesFromDb = await _context.ContentTypes
-                .AsNoTracking()
-                .Include(ct => ct.Fields.Where(f => !f.IsDeleted))
-                .OrderBy(ct => ct.Name)
-                .ToListAsync(); // <-- اجرای کوئری در دیتابیس
-
-            // ۲. اکنون در حافظه C# مپ می‌کنیم
-            return contentTypesFromDb.Select(MapToContentTypeDto).ToList();
-        }
-        // ---*** پایان بخش اصلاح‌شده ***---
-
-        public async Task<ContentTypeDto?> GetContentTypeBySlugAsync(string apiSlug)
-        {
-            var contentType = await _context.ContentTypes
-                .AsNoTracking()
-                .Include(ct => ct.Fields.Where(f => !f.IsDeleted))
-                .FirstOrDefaultAsync(ct => ct.ApiSlug == apiSlug);
-            if (contentType == null) return null;
-            return MapToContentTypeDto(contentType);
-        }
-
-        // --- متدهای کمکی خصوصی ---
-        private ContentTypeDto MapToContentTypeDto(ContentType contentType)
-        {
-            return new ContentTypeDto(
-                contentType.Id, contentType.Name, contentType.ApiSlug,
-                contentType.Fields.Select(MapToContentFieldDto).ToList()
-            );
-        }
-
-        private ContentFieldDto MapToContentFieldDto(ContentField field)
-        {
-            return new ContentFieldDto(
-                field.Id, field.Name, field.ApiSlug, field.FieldType, field.IsRequired, field.Settings
-            );
+            return new ContentFieldDto
+            {
+                Id = f.Id,
+                Name = f.Name,
+                ApiSlug = f.ApiSlug,
+                FieldType = f.FieldType,
+                IsRequired = f.IsRequired
+            };
         }
     }
 }

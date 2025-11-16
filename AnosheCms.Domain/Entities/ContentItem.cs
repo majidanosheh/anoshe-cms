@@ -26,5 +26,6 @@ namespace AnosheCms.Domain.Entities
         /// ما از Dictionary برای کار آسان با JSON در C# استفاده می‌کنیم.
         /// </summary>
         public Dictionary<string, object> ContentData { get; set; } = new Dictionary<string, object>();
+
     }
 }
