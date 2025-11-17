@@ -1,4 +1,5 @@
-﻿using AnosheCms.Application.Interfaces;
+﻿// مسیر: AnosheCms.Infrastructure/Persistence/Data/ApplicationDbContext.cs
+using AnosheCms.Application.Interfaces;
 using AnosheCms.Domain.Entities;
 using AnosheCms.Domain.Common;
 using Microsoft.AspNetCore.Identity;
@@ -8,9 +9,10 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Text.Json; // (جدید) مورد نیاز برای تبدیل JSON
-using System.Collections.Generic; // (جدید) مورد نیاز برای تبدیل JSON
+using System.Text.Json;
+using System.Collections.Generic;
 using AnosheCms.Domain.Constants;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace AnosheCms.Infrastructure.Persistence.Data
 {
@@ -21,19 +23,22 @@ namespace AnosheCms.Infrastructure.Persistence.Data
     {
         private readonly ICurrentUserService _currentUserService;
 
-        // (جدید) افزودن DbSetهای هسته CMS
+        // --- DbSet های هسته CMS ---
         public DbSet<ContentType> ContentTypes { get; set; }
         public DbSet<ContentField> ContentFields { get; set; }
         public DbSet<ContentItem> ContentItems { get; set; }
         public DbSet<MediaFile> MediaFiles { get; set; }
-
         public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<UserLoginHistory> UserLoginHistories { get; set; }
         public DbSet<UserSession> UserSessions { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
+
+        // --- (DbSet های فرم‌ساز بازنگری‌شده) ---
         public DbSet<Form> Forms { get; set; }
         public DbSet<FormField> FormFields { get; set; }
         public DbSet<FormSubmission> FormSubmissions { get; set; }
+        public DbSet<FormSubmissionData> FormSubmissionData { get; set; } 
+
         public ApplicationDbContext(
             DbContextOptions<ApplicationDbContext> options,
             ICurrentUserService currentUserService = null
@@ -63,7 +68,6 @@ namespace AnosheCms.Infrastructure.Persistence.Data
                             break;
                     }
                 }
-
                 if (entry.Entity is ISoftDelete softDeleteEntity)
                 {
                     if (entry.State == EntityState.Deleted)
@@ -75,7 +79,6 @@ namespace AnosheCms.Infrastructure.Persistence.Data
                     }
                 }
             }
-
             return await base.SaveChangesAsync(cancellationToken);
         }
 
@@ -83,6 +86,7 @@ namespace AnosheCms.Infrastructure.Persistence.Data
         {
             base.OnModelCreating(builder);
 
+            // (پیکربندی‌های Identity)
             builder.Entity<ApplicationUser>().ToTable("Users");
             builder.Entity<ApplicationRole>().ToTable("Roles");
             builder.Entity<ApplicationUserRole>().ToTable("UserRoles");
@@ -97,78 +101,63 @@ namespace AnosheCms.Infrastructure.Persistence.Data
                 b.HasMany(e => e.LoginHistories).WithOne(e => e.User).HasForeignKey(lh => lh.UserId).IsRequired();
                 b.HasMany(e => e.Sessions).WithOne(e => e.User).HasForeignKey(s => s.UserId).IsRequired();
             });
-
             builder.Entity<ApplicationRole>(b => {
                 b.HasMany(e => e.UserRoles).WithOne(e => e.Role).HasForeignKey(ur => ur.RoleId).IsRequired();
             });
-            builder.Entity<IdentityUserToken<Guid>>(b =>
-            {
-                b.ToTable("UserTokens");
 
-                // (فیلد جدید برای تاریخ انقضای توکن‌های سفارشی)
-                b.Property<DateTime?>("ExpiryDate");
-            });
-            // (جدید و حیاتی)
-            // این کد به EF Core می‌گوید که چگونه Dictionary را به JSON تبدیل کند
+            // (پیکربندی ContentItem)
             builder.Entity<ContentItem>(b => {
                 b.Property(ci => ci.ContentData)
                     .HasConversion(
                         v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
                         v => JsonSerializer.Deserialize<Dictionary<string, object>>(v, (JsonSerializerOptions)null)
                     );
-
-                // (جدید) تعریف رابطه با ContentType
-                b.HasOne(ci => ci.ContentType)
-                 .WithMany(ct => ct.ContentItems)
-                 .HasForeignKey(ci => ci.ContentTypeId)
-                 .OnDelete(DeleteBehavior.Cascade); // (مهم: با حذف ContentType، آیتم‌ها حذف شوند)
             });
 
-            // (جدید) تعریف رابطه ContentField
-            builder.Entity<ContentField>(b => {
-                b.HasOne(cf => cf.ContentType)
-                 .WithMany(ct => ct.Fields)
-                 .HasForeignKey(cf => cf.ContentTypeId)
-                 .OnDelete(DeleteBehavior.Cascade); // (مهم: با حذف ContentType، فیلدها حذف شوند)
-            });
 
             builder.Entity<Form>(b => {
                 b.HasIndex(f => f.ApiSlug).IsUnique();
+                b.Property(f => f.Settings).HasColumnType("nvarchar(max)");
                 b.HasQueryFilter(f => !f.IsDeleted);
             });
 
             builder.Entity<FormField>(b => {
-                // (تنظیم تبدیل JSON برای فیلد Settings)
-                b.Property(ff => ff.Settings)
-                    .HasConversion(
-                        v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
-                        v => JsonSerializer.Deserialize<Dictionary<string, object>>(v, (JsonSerializerOptions)null)
-                    );
+                b.Property(ff => ff.Settings).HasColumnType("nvarchar(max)");
+                b.Property(ff => ff.ValidationRules).HasColumnType("nvarchar(max)");
+                b.Property(ff => ff.ConditionalLogic).HasColumnType("nvarchar(max)");
 
                 b.HasOne(ff => ff.Form)
                  .WithMany(f => f.Fields)
                  .HasForeignKey(ff => ff.FormId)
-                 .OnDelete(DeleteBehavior.Cascade); // (اگر فرم حذف شد، فیلدها هم حذف شوند)
+                 .OnDelete(DeleteBehavior.Cascade);
 
                 b.HasQueryFilter(ff => !ff.IsDeleted);
             });
 
             builder.Entity<FormSubmission>(b => {
-                // (تنظیم تبدیل JSON برای فیلد SubmissionData)
-                b.Property(fs => fs.SubmissionData)
-                    .HasConversion(
-                        v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
-                        v => JsonSerializer.Deserialize<Dictionary<string, object>>(v, (JsonSerializerOptions)null)
-                    );
-
                 b.HasOne(fs => fs.Form)
                  .WithMany(f => f.Submissions)
                  .HasForeignKey(fs => fs.FormId)
-                 .OnDelete(DeleteBehavior.Cascade); // (اگر فرم حذف شد، پاسخ‌ها هم حذف شوند)
+                 .OnDelete(DeleteBehavior.Cascade);
 
                 b.HasQueryFilter(fs => !fs.IsDeleted);
             });
-            // (جدید) اعمال فیلترهای SoftDelete برای موجودیت‌های جدید
+
+            builder.Entity<FormSubmissionData>(b => {
+                b.HasKey(fsd => fsd.Id); 
+
+                b.HasOne(fsd => fsd.Submission)
+                 .WithMany(fs => fs.SubmissionData)
+                 .HasForeignKey(fsd => fsd.SubmissionId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                b.Property(fsd => fsd.FieldValue).HasColumnType("nvarchar(max)");
+                b.HasIndex(fsd => fsd.SubmissionId);
+                b.HasIndex(fsd => fsd.FieldName);
+            });
+            // --- (پایان پیکربندی‌های ) ---
+
+            // (فیلترهای SoftDelete)
             builder.Entity<ApplicationUser>().HasQueryFilter(u => !u.IsDeleted);
             builder.Entity<ContentType>().HasQueryFilter(ct => !ct.IsDeleted);
             builder.Entity<ContentField>().HasQueryFilter(cf => !cf.IsDeleted);
@@ -176,6 +165,7 @@ namespace AnosheCms.Infrastructure.Persistence.Data
             builder.Entity<MediaFile>().HasQueryFilter(mf => !mf.IsDeleted);
             builder.Entity<ApplicationRole>().HasQueryFilter(ar => !ar.IsDeleted);
 
+            // (پیکربندی‌های روابط موجود)
             builder.Entity<RefreshToken>().HasIndex(r => r.Token).IsUnique();
             builder.Entity<RefreshToken>().HasIndex(r => new { r.UserId, r.IsRevoked });
             builder.Entity<UserLoginHistory>().HasIndex(h => h.UserId);
@@ -186,6 +176,7 @@ namespace AnosheCms.Infrastructure.Persistence.Data
             SeedData(builder);
         }
 
+        
         private void SeedData(ModelBuilder builder)
         {
             Guid SUPER_ADMIN_ROLE_ID = Guid.Parse("a1b1c1d1-1111-4444-8888-a1b1c1d1e1f1");

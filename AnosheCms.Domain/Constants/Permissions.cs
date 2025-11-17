@@ -1,9 +1,6 @@
-﻿// File: AnosheCms.Domain/Constants/Permissions.cs
-// (تصحیح شد: وابستگی به Application و متد GetAllPermissionGroups حذف شد)
-
+﻿// مسیر: AnosheCms.Domain/Constants/Permissions.cs
 namespace AnosheCms.Domain.Constants
 {
-    // (این کلاس اکنون فقط ثابت‌ها را نگه می‌دارد)
     public static class Permissions
     {
         public const string ViewDashboard = "Permissions.Dashboard.View";
@@ -35,7 +32,8 @@ namespace AnosheCms.Domain.Constants
         public const string EditRoles = "Permissions.Roles.Edit";
         public const string DeleteRoles = "Permissions.Roles.Delete";
         public const string ManagePermissions = "Permissions.Roles.ManagePermissions";
-        // --- دسترسی‌های ماژول فرم‌ساز ---
+
+        // --- (جدید) دسترسی‌های ماژول فرم‌ساز (طبق docx) ---
         public const string ViewForms = "Permissions.Forms.View";
         public const string CreateForms = "Permissions.Forms.Create";
         public const string EditForms = "Permissions.Forms.Edit";

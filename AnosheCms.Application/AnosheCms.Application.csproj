@@ -7,16 +7,17 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <Compile Remove="DTOs\NewFolder1\**" />
+	  <EmbeddedResource Remove="DTOs\NewFolder1\**" />
+	  <None Remove="DTOs\NewFolder1\**" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<ProjectReference Include="..\AnosheCms.Domain\AnosheCms.Domain.csproj" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <Folder Include="DTOs\NewFolder1\" />
-	  <Folder Include="DTOs\NewFolder\" />
 	</ItemGroup>
 
 </Project>

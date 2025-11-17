@@ -1,25 +1,21 @@
-﻿// AnosheCms/Domain/Entities/Form.cs
-// FULL REWRITE
+﻿// AnosheCms/Application/DTOs/Form/FormGeneralSettingsDto.cs
+// NEW FILE
 
-using AnosheCms.Domain.Common;
 using System.ComponentModel.DataAnnotations;
 
-namespace AnosheCms.Domain.Entities
+namespace AnosheCms.Application.DTOs.Form
 {
-    public class Form : AuditableBaseEntity, ISoftDelete
+    public class FormGeneralSettingsDto
     {
-        [Key]
-        public Guid Id { get; set; }
-
         [Required]
         [StringLength(200)]
         public string Name { get; set; }
 
         [Required]
         [StringLength(100)]
+        [RegularExpression("^[a-z0-9-]+$", ErrorMessage = "اسلاگ فقط می‌تواند شامل حروف کوچک انگلیسی، اعداد و خط تیره (-) باشد.")]
         public string ApiSlug { get; set; }
 
-        
         [StringLength(100)]
         public string SubmitButtonText { get; set; } = "Submit";
 
@@ -29,18 +25,11 @@ namespace AnosheCms.Domain.Entities
         [StringLength(500)]
         public string? RedirectUrl { get; set; }
 
+        // Email Notification Settings
         public bool SendEmailNotification { get; set; }
 
         [StringLength(255)]
+        [EmailAddress(ErrorMessage = "آدرس ایمیل گیرنده نامعتبر است.")]
         public string? NotificationEmailRecipient { get; set; }
-        // ----------------------------------------
-
-        
-        public string? Settings { get; set; }
-
-        public virtual ICollection<FormField> Fields { get; set; } = new List<FormField>();
-        public virtual ICollection<FormSubmission> Submissions { get; set; } = new List<FormSubmission>();
-
-        public bool IsDeleted { get; set; }
     }
 }

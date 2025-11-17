@@ -5,18 +5,13 @@ using System.Collections.Generic;
 
 namespace AnosheCms.Domain.Entities
 {
-    /// <summary>
-    /// نگه‌دارنده یک رکورد ارسال شده از یک فرم
-    /// </summary>
     public class FormSubmission : AuditableBaseEntity
     {
         public Guid FormId { get; set; }
         public virtual Form Form { get; set; }
 
-        /// <summary>
-        /// داده‌های ارسالی فرم به صورت JSON
-        /// (e.g., {"email_address": "test@example.com", "message": "Hello"})
-        /// </summary>
-        public Dictionary<string, object> SubmissionData { get; set; } = new Dictionary<string, object>();
+        public string IpAddress { get; set; }
+        public string UserAgent { get; set; }
+        public virtual ICollection<FormSubmissionData> SubmissionData { get; set; } = new List<FormSubmissionData>();
     }
 }

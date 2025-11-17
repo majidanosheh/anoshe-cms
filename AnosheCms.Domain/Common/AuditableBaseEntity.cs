@@ -4,9 +4,10 @@ using System;
 
 namespace AnosheCms.Domain.Common
 {
-    public abstract class AuditableBaseEntity : IAuditable, ISoftDelete
+    // (اکنون از BaseEntity ارث‌بری می‌کند - که باید موجود باشد)
+    public abstract class AuditableBaseEntity : BaseEntity, IAuditable, ISoftDelete
     {
-        public Guid Id { get; set; }
+        // (Id از BaseEntity می‌آید)
 
         // --- IAuditable ---
         public DateTime CreatedDate { get; set; }
