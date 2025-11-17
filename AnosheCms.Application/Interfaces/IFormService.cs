@@ -1,4 +1,5 @@
 ﻿// AnosheCms/Application/Interfaces/IFormService.cs
+// FULL REWRITE
 
 using AnosheCms.Application.DTOs.Form;
 using System;
@@ -9,6 +10,7 @@ namespace AnosheCms.Application.Interfaces
 {
     public interface IFormService
     {
+        // --- Form CRUD ---
         Task<FormDto> GetFormByIdAsync(Guid id);
         Task<List<FormDto>> GetAllFormsAsync();
         Task<FormDto> CreateFormAsync(FormCreateDto request);
@@ -21,6 +23,7 @@ namespace AnosheCms.Application.Interfaces
         Task<bool> DeleteFormFieldAsync(Guid fieldId);
         Task<bool> UpdateFieldOrdersAsync(UpdateFieldOrdersRequest request);
 
+        // --- Public ---
         Task<PublicFormDto> GetFormBySlugAsync(string slug);
     }
 }

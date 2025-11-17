@@ -33,9 +33,11 @@ namespace AnosheCms.Domain.Entities
 
         [StringLength(255)]
         public string? NotificationEmailRecipient { get; set; }
+
+        // DateTime ModifiedBy { get; set; }
         // ----------------------------------------
 
-        
+
         public string? Settings { get; set; }
 
         public virtual ICollection<FormField> Fields { get; set; } = new List<FormField>();
