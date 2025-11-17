@@ -1,189 +1,172 @@
-﻿//// AnosheCms.Tests.Unit/Services/SubmissionServiceTests.cs
-//// FULL REWRITE
+﻿// AnosheCms.Tests.Unit/Services/SubmissionServiceTests.cs
+// FULL REWRITE
 
-//using AnosheCms.Application.DTOs.Form; // (DTOs باید import شوند)
-//using AnosheCms.Application.Interfaces;
-//using AnosheCms.Domain.Entities;
-//using AnosheCms.Infrastructure.Persistence.Data;
-//using AnosheCms.Infrastructure.Services;
-//using Microsoft.EntityFrameworkCore;
-//using System;
-//using System.Collections.Generic;
-//using System.Linq;
-//using System.Threading.Tasks;
-//using Xunit;
+using AnosheCms.Application.DTOs.Form;
+using AnosheCms.Application.Interfaces;
+using AnosheCms.Domain.Entities;
+using AnosheCms.Infrastructure.Persistence.Data;
+using AnosheCms.Infrastructure.Services;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Xunit;
 
-//namespace AnosheCms.Tests.Unit.Services
-//{
-//    public class SubmissionServiceTests : IDisposable
-//    {
-//        private readonly ApplicationDbContext _context;
-//        private readonly SubmissionService _sut; // System Under Test
-//        private readonly Guid _formId;
-//        private const string FormSlug = "contact-us";
+namespace AnosheCms.Tests.Unit.Services
+{
+    public class SubmissionServiceTests : IDisposable
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly SubmissionService _sut;
+        private readonly Guid _formId;
+        private const string FormSlug = "conditional-form";
 
-//        public SubmissionServiceTests()
-//        {
-//            var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-//                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-//                .Options;
+        public SubmissionServiceTests()
+        {
+            var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+                .Options;
 
-//            // (ما در اینجا ICurrentUserService را null رد می‌کنیم
-//            // چون SubmissionService مستقیماً به آن نیاز ندارد،
-//            // اما DbContext برای Auditing به آن نیاز دارد.
-//            // در تست‌های Auditing باید Mock شود)
-//            _context = new ApplicationDbContext(options, null);
+            _context = new ApplicationDbContext(options, null);
 
-//            _formId = Guid.NewGuid();
+            _formId = Guid.NewGuid();
 
-//            // (تعریف قوانین اعتبارسنجی پویا برای تست)
-//            string phoneValidationRules = @"{
-//                ""regexPattern"": ""^09[0-9]{9}$"",
-//                ""regexErrorMessage"": ""شماره موبایل باید 11 رقم و با 09 شروع شود.""
-//            }";
-//            string messageValidationRules = @"{
-//                ""minLength"": 10,
-//                ""maxLength"": 500
-//            }";
+            // (تعریف منطق شرطی: "Show 'other_reason' if 'category' Equals 'Other'")
+            string conditionalLogic = @"{
+                ""action"": ""Show"",
+                ""condition"": ""All"",
+                ""rules"": [{ ""field"": ""category"", ""operator"": ""Equals"", ""value"": ""Other"" }]
+            }";
 
-//            var form = new Form
-//            {
-//                Id = _formId,
-//                ApiSlug = FormSlug,
-//                Name = "Contact Us",
-//                IsDeleted = false,
-//                Fields = new List<FormField>
-//                {
-//                    new FormField { Name = "full_name", Label = "Full Name", FieldType = "Text", IsRequired = true, IsDeleted = false },
-//                    new FormField { Name = "email", Label = "Email", FieldType = "Email", IsRequired = true, IsDeleted = false },
-//                    new FormField { Name = "phone", Label = "Phone", FieldType = "Text", IsRequired = false, ValidationRules = phoneValidationRules, IsDeleted = false },
-//                    new FormField { Name = "message", Label = "Message", FieldType = "Textarea", IsRequired = true, ValidationRules = messageValidationRules, IsDeleted = false }
-//                }
-//            };
-//            _context.Forms.Add(form);
-//            _context.SaveChanges();
+            var form = new Form
+            {
+                Id = _formId,
+                ApiSlug = FormSlug,
+                Name = "Conditional Form",
+                IsDeleted = false,
+                Fields = new List<FormField>
+                {
+                    // (فیلد انتخاب دسته‌بندی)
+                    new FormField { Name = "category", Label = "Category", FieldType = "Dropdown", IsRequired = true, IsDeleted = false },
+                    
+                    // (فیلد دلیل که اجباری است اما شرطی)
+                    new FormField { Name = "other_reason", Label = "Reason", FieldType = "Text",
+                                    IsRequired = true, // (اجباری، اما فقط وقتی قابل مشاهده است)
+                                    ConditionalLogic = conditionalLogic,
+                                    IsDeleted = false },
 
-//            _sut = new SubmissionService(_context);
-//        }
+                    // (فیلد همیشه اجباری)
+                    new FormField { Name = "email", Label = "Email", FieldType = "Email", IsRequired = true, IsDeleted = false }
+                }
+            };
+            _context.Forms.Add(form);
+            _context.SaveChanges();
 
-//        [Fact]
-//        public async Task SubmitFormAsync_ShouldFail_WhenRequiredFieldIsMissing()
-//        {
-//            // Arrange
-//            var submissionData = new Dictionary<string, string>
-//            {
-//                { "full_name", "Test User" },
-//                { "email", "test@example.com" }
-//                // (فیلد "message" که اجباری است، ارسال نشده)
-//            };
-//            var request = new PublicFormSubmissionRequest(submissionData);
+            _sut = new SubmissionService(_context);
+        }
 
-//            // Act
-//            var result = await _sut.SubmitFormAsync(FormSlug, request, "127.0.0.1", "TestAgent");
+        // --- تست حفره اعتبارسنجی (Validation Gap) ---
+        [Fact]
+        public async Task SubmitFormAsync_ShouldSucceed_WhenConditionalRequiredFieldIsHidden()
+        {
+            // Arrange
+            var submissionData = new Dictionary<string, string>
+            {
+                { "category", "Support" }, // (منطق شرطی را فعال نمی‌کند)
+                { "email", "test@example.com" }
+                // (فیلد 'other_reason' که اجباری بود، ارسال نشده، اما چون مخفی است، نباید خطا دهد)
+            };
+            var request = new PublicFormSubmissionRequest(submissionData);
 
-//            // Assert
-//            Assert.False(result.Succeeded);
-//            Assert.True(result.ValidationErrors.ContainsKey("message"));
-//        }
+            // Act
+            var result = await _sut.SubmitFormAsync(FormSlug, request, "127.0.0.1", "TestAgent");
 
-//        // --- NEW TESTS (Dynamic Validation) ---
+            // Assert
+            Assert.True(result.Succeeded, "ارسال باید موفقیت‌آمیز باشد چون فیلد اجباری مخفی بود.");
+            Assert.Null(result.ValidationErrors);
+        }
 
-//        [Fact]
-//        public async Task SubmitFormAsync_ShouldFail_WhenRegexIsInvalid()
-//        {
-//            // Arrange
-//            var submissionData = new Dictionary<string, string>
-//            {
-//                { "full_name", "Test User" },
-//                { "email", "test@example.com" },
-//                { "phone", "12345" }, // (Regex نامعتبر)
-//                { "message", "This is a valid message content." }
-//            };
-//            var request = new PublicFormSubmissionRequest(submissionData);
+        [Fact]
+        public async Task SubmitFormAsync_ShouldFail_WhenConditionalRequiredFieldIsVisibleAndMissing()
+        {
+            // Arrange
+            var submissionData = new Dictionary<string, string>
+            {
+                { "category", "Other" }, // (منطق شرطی را فعال می‌کند)
+                { "email", "test@example.com" }
+                // (فیلد 'other_reason' اکنون قابل مشاهده و اجباری است، اما ارسال نشده)
+            };
+            var request = new PublicFormSubmissionRequest(submissionData);
 
-//            // Act
-//            var result = await _sut.SubmitFormAsync(FormSlug, request, "127.0.0.1", "TestAgent");
+            // Act
+            var result = await _sut.SubmitFormAsync(FormSlug, request, "127.0.0.1", "TestAgent");
 
-//            // Assert
-//            Assert.False(result.Succeeded);
-//            Assert.True(result.ValidationErrors.ContainsKey("phone"));
-//            Assert.Equal("شماره موبایل باید 11 رقم و با 09 شروع شود.", result.ValidationErrors["phone"]);
-//        }
+            // Assert
+            Assert.False(result.Succeeded);
+            Assert.True(result.ValidationErrors.ContainsKey("other_reason"));
+        }
 
-//        [Fact]
-//        public async Task SubmitFormAsync_ShouldFail_WhenMinLengthIsInvalid()
-//        {
-//            // Arrange
-//            var submissionData = new Dictionary<string, string>
-//            {
-//                { "full_name", "Test User" },
-//                { "email", "test@example.com" },
-//                { "message", "Too short" } // (MinLength 10 است)
-//            };
-//            var request = new PublicFormSubmissionRequest(submissionData);
+        // --- تست حفره امنیتی (Security Gap - Data Stuffing) ---
+        [Fact]
+        public async Task SubmitFormAsync_ShouldNotSaveData_ForHiddenFields()
+        {
+            // Arrange
+            var submissionData = new Dictionary<string, string>
+            {
+                { "category", "Support" }, // (فیلد 'other_reason' مخفی است)
+                { "email", "test@example.com" },
+                { "other_reason", "HACKER_DATA" } // (تلاش برای ثبت داده در فیلد مخفی)
+            };
+            var request = new PublicFormSubmissionRequest(submissionData);
 
-//            // Act
-//            var result = await _sut.SubmitFormAsync(FormSlug, request, "127.0.0.1", "TestAgent");
+            // Act
+            var result = await _sut.SubmitFormAsync(FormSlug, request, "127.0.0.1", "TestAgent");
 
-//            // Assert
-//            Assert.False(result.Succeeded);
-//            Assert.True(result.ValidationErrors.ContainsKey("message"));
-//            Assert.Contains("حداقل 10 کاراکتر", result.ValidationErrors["message"]);
-//        }
+            // Assert
+            Assert.True(result.Succeeded); // (ارسال موفق است)
 
-//        [Fact]
-//        public async Task SubmitFormAsync_ShouldSucceed_WhenDataIsValidAndRegexIsValid()
-//        {
-//            // Arrange
-//            var submissionData = new Dictionary<string, string>
-//            {
-//                { "full_name", "Test User" },
-//                { "email", "test@example.com" },
-//                { "phone", "09123456789" }, // (Regex معتبر)
-//                { "message", "This is a perfectly valid message with enough length." }
-//            };
-//            var request = new PublicFormSubmissionRequest(submissionData);
+            // (بررسی دیتابیس برای اطمینان از عدم ذخیره داده اضافی)
+            var submission = await _context.FormSubmissions
+                .Include(s => s.SubmissionData)
+                .FirstOrDefaultAsync();
 
-//            // Act
-//            var result = await _sut.SubmitFormAsync(FormSlug, request, "127.0.0.1", "TestAgent");
+            Assert.NotNull(submission);
+            Assert.Equal(2, submission.SubmissionData.Count); // (فقط باید 'category' و 'email' ذخیره شده باشند)
+            Assert.Null(submission.SubmissionData.FirstOrDefault(d => d.FieldName == "other_reason"));
+        }
 
-//            // Assert
-//            Assert.True(result.Succeeded);
-//            Assert.Null(result.ValidationErrors);
+        [Fact]
+        public async Task SubmitFormAsync_ShouldSaveData_WhenConditionalFieldIsVisible()
+        {
+            // Arrange
+            var submissionData = new Dictionary<string, string>
+            {
+                { "category", "Other" }, // (قابل مشاهده)
+                { "email", "test@example.com" },
+                { "other_reason", "VALID_DATA" } // (داده معتبر)
+            };
+            var request = new PublicFormSubmissionRequest(submissionData);
 
-//            var submission = await _context.FormSubmissions
-//                .Include(s => s.SubmissionData)
-//                .FirstOrDefaultAsync();
+            // Act
+            var result = await _sut.SubmitFormAsync(FormSlug, request, "127.0.0.1", "TestAgent");
 
-//            Assert.NotNull(submission);
-//            Assert.Equal("09123456789", submission.SubmissionData.First(d => d.FieldName == "phone").FieldValue);
-//        }
+            // Assert
+            Assert.True(result.Succeeded);
 
-//        [Fact]
-//        public async Task SubmitFormAsync_ShouldSucceed_WhenOptionalRegexFieldIsEmpty()
-//        {
-//            // Arrange (فیلد "phone" اختیاری است)
-//            var submissionData = new Dictionary<string, string>
-//            {
-//                { "full_name", "Test User" },
-//                { "email", "test@example.com" },
-//                { "phone", "" }, // (خالی ارسال شده)
-//                { "message", "This is a perfectly valid message with enough length." }
-//            };
-//            var request = new PublicFormSubmissionRequest(submissionData);
+            var submission = await _context.FormSubmissions
+                .Include(s => s.SubmissionData)
+                .FirstOrDefaultAsync();
 
-//            // Act
-//            var result = await _sut.SubmitFormAsync(FormSlug, request, "127.0.0.1", "TestAgent");
+            Assert.NotNull(submission);
+            Assert.Equal(3, submission.SubmissionData.Count); // (همه 3 فیلد باید ذخیره شده باشند)
+            Assert.Equal("VALID_DATA", submission.SubmissionData.First(d => d.FieldName == "other_reason").FieldValue);
+        }
 
-//            // Assert
-//            Assert.True(result.Succeeded);
-//            Assert.Null(result.ValidationErrors);
-//        }
-
-//        public void Dispose()
-//        {
-//            _context.Database.EnsureDeleted();
-//            _context.Dispose();
-//        }
-//    }
-//}
+        public void Dispose()
+        {
+            _context.Database.EnsureDeleted();
+            _context.Dispose();
+        }
+    }
+}

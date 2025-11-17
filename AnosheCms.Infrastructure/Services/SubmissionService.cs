@@ -6,6 +6,7 @@ using AnosheCms.Application.DTOs.Form.Rules;
 using AnosheCms.Application.Interfaces;
 using AnosheCms.Domain.Entities;
 using AnosheCms.Infrastructure.Persistence.Data;
+using AnosheCms.Infrastructure.Services.Helpers; // (Import کردن Helper)
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -38,56 +39,76 @@ namespace AnosheCms.Infrastructure.Services
 
             if (form == null)
             {
-                var errors = new Dictionary<string, string> { { "form", "Form not found." } };
-                // (اصلاح شد: ارسال پیام در Failure)
-                return FormSubmitResult.Failure(errors, "فرم مورد نظر یافت نشد.");
+                return FormSubmitResult.Failure(new Dictionary<string, string> { { "form", "Form not found." } }, "فرم مورد نظر یافت نشد.");
             }
 
-            // (پردازش اعتبارسنجی - بدون تغییر)
+            // --- مرحله ۱: ارزیابی منطق شرطی (Evaluation Pass) ---
+            var fieldVisibility = new Dictionary<string, bool>();
             foreach (var field in form.Fields)
             {
+                // (استفاده از Helper برای تعیین وضعیت مشاهده)
+                fieldVisibility[field.Name] = ConditionalLogicEvaluator.IsFieldVisible(field, request.SubmissionData);
+            }
+
+            // --- مرحله ۲: اعتبارسنجی (Validation Pass) ---
+            foreach (var field in form.Fields)
+            {
+                bool isVisible = fieldVisibility[field.Name];
+
                 request.SubmissionData.TryGetValue(field.Name, out var submittedValue);
                 submittedValue = submittedValue?.Trim();
 
-                if (field.IsRequired && string.IsNullOrWhiteSpace(submittedValue))
+                // --- 2.1. بررسی IsRequired (فقط اگر فیلد قابل مشاهده بود) ---
+                if (field.IsRequired && isVisible && string.IsNullOrWhiteSpace(submittedValue))
                 {
                     validationErrors[field.Name] = $"فیلد '{field.Label}' اجباری است.";
                     continue;
                 }
-                if (string.IsNullOrWhiteSpace(submittedValue)) continue;
 
-                if (field.FieldType.Equals("Email", StringComparison.OrdinalIgnoreCase))
+                // (اگر فیلد خالی است، چه مخفی باشد چه اختیاری، ادامه می‌دهیم)
+                if (string.IsNullOrWhiteSpace(submittedValue))
                 {
-                    if (!new EmailAddressAttribute().IsValid(submittedValue))
-                        validationErrors[field.Name] = $"فیلد '{field.Label}' یک ایمیل معتبر نیست.";
+                    continue;
                 }
 
-                if (!string.IsNullOrWhiteSpace(field.ValidationRules))
+                // (اعتبارسنجی‌های دیگر فقط روی فیلدهای قابل مشاهده اجرا می‌شوند)
+                if (isVisible)
                 {
-                    try
+                    // --- 2.2. بررسی نوع پایه (ایمیل) ---
+                    if (field.FieldType.Equals("Email", StringComparison.OrdinalIgnoreCase))
                     {
-                        var rules = JsonSerializer.Deserialize<FieldValidationRules>(field.ValidationRules, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                        if (rules != null)
-                        {
-                            if (rules.MinLength.HasValue && submittedValue.Length < rules.MinLength.Value)
-                                validationErrors[field.Name] = $"فیلد '{field.Label}' باید حداقل {rules.MinLength.Value} کاراکتر باشد.";
-                            if (rules.MaxLength.HasValue && submittedValue.Length > rules.MaxLength.Value)
-                                validationErrors[field.Name] = $"فیلد '{field.Label}' نمی‌تواند بیش از {rules.MaxLength.Value} کاراکتر باشد.";
-                            if (!string.IsNullOrWhiteSpace(rules.RegexPattern) && !Regex.IsMatch(submittedValue, rules.RegexPattern))
-                                validationErrors[field.Name] = string.IsNullOrWhiteSpace(rules.RegexErrorMessage) ? $"فیلد '{field.Label}' فرمت نامعتبر دارد." : rules.RegexErrorMessage;
-                        }
+                        if (!new EmailAddressAttribute().IsValid(submittedValue))
+                            validationErrors[field.Name] = $"فیلد '{field.Label}' یک ایمیل معتبر نیست.";
                     }
-                    catch (JsonException) { /* لاگ خطا */ }
+
+                    // --- 2.3. پردازش اعتبارسنجی پویا (ValidationRules) ---
+                    if (!string.IsNullOrWhiteSpace(field.ValidationRules))
+                    {
+                        // (منطق اعتبارسنجی پویا که قبلاً نوشتیم)
+                        try
+                        {
+                            var rules = JsonSerializer.Deserialize<FieldValidationRules>(field.ValidationRules, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                            if (rules != null)
+                            {
+                                if (rules.MinLength.HasValue && submittedValue.Length < rules.MinLength.Value)
+                                    validationErrors[field.Name] = $"فیلد '{field.Label}' باید حداقل {rules.MinLength.Value} کاراکتر باشد.";
+                                if (rules.MaxLength.HasValue && submittedValue.Length > rules.MaxLength.Value)
+                                    validationErrors[field.Name] = $"فیلد '{field.Label}' نمی‌تواند بیش از {rules.MaxLength.Value} کاراکتر باشد.";
+                                if (!string.IsNullOrWhiteSpace(rules.RegexPattern) && !Regex.IsMatch(submittedValue, rules.RegexPattern))
+                                    validationErrors[field.Name] = string.IsNullOrWhiteSpace(rules.RegexErrorMessage) ? $"فیلد '{field.Label}' فرمت نامعتبر دارد." : rules.RegexErrorMessage;
+                            }
+                        }
+                        catch (JsonException) { /* لاگ خطا */ }
+                    }
                 }
             }
 
             if (validationErrors.Any())
             {
-                // (اصلاح شد: ارسال پیام در Failure)
                 return FormSubmitResult.Failure(validationErrors, "خطا در اعتبارسنجی داده‌های ارسالی.");
             }
 
-            // (پردازش ذخیره‌سازی - بدون تغییر)
+            // --- مرحله ۳: ذخیره‌سازی (فقط فیلدهای قابل مشاهده) ---
             var submission = new FormSubmission
             {
                 FormId = form.Id,
@@ -96,7 +117,8 @@ namespace AnosheCms.Infrastructure.Services
             };
 
             submission.SubmissionData = form.Fields
-                .Where(f => request.SubmissionData.ContainsKey(f.Name))
+                // (فقط فیلدهایی که هم ارسال شده‌اند و هم قابل مشاهده بوده‌اند)
+                .Where(f => fieldVisibility[f.Name] && request.SubmissionData.ContainsKey(f.Name))
                 .Select(f => new FormSubmissionData
                 {
                     FieldName = f.Name,
@@ -107,7 +129,6 @@ namespace AnosheCms.Infrastructure.Services
             _context.FormSubmissions.Add(submission);
             await _context.SaveChangesAsync();
 
-            // (اصلاح شد: ارسال پیام موفقیت‌آمیز بر اساس تنظیمات فرم)
             string successMessage = string.IsNullOrWhiteSpace(form.ConfirmationMessage)
                 ? "اطلاعات شما با موفقیت ثبت شد."
                 : form.ConfirmationMessage;
