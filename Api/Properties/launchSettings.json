@@ -1,3 +1,24 @@
+//{
+//  "$schema": "http://json.schemastore.org/launchsettings.json",
+//  "profiles": {
+//    "AnosheCms.Api": {
+//      "commandName": "Project",
+//      "dotnetRunMessages": true,
+//      "launchBrowser": true,
+//      "launchUrl": "swagger",
+//      // --- مطمئن شو این خط دقیقاً همین باشه ---
+//      //"applicationUrl": "http://localhost:56006",
+//      "applicationUrl": "https://localhost:7021;http://localhost:5021",
+//      "environmentVariables": {
+//        "ASPNETCORE_ENVIRONMENT": "Development"
+//      }
+//    }
+//  }
+//}
+
+// AnosheCms/Api/Properties/launchSettings.json
+// FULL REWRITE
+
 {
   "$schema": "http://json.schemastore.org/launchsettings.json",
   "profiles": {
@@ -6,8 +27,8 @@
       "dotnetRunMessages": true,
       "launchBrowser": true,
       "launchUrl": "swagger",
-      // --- مطمئن شو این خط دقیقاً همین باشه ---
-      "applicationUrl": "http://localhost:56006",
+      // (اصلاح شد: حذف https و استفاده از http ساده)
+      "applicationUrl": "http://localhost:7021",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }

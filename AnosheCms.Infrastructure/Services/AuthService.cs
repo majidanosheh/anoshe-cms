@@ -1,11 +1,13 @@
 ﻿// File: AnosheCms.Infrastructure/Services/AuthService.cs
+// FULL REWRITE
+
 using AnosheCms.Application.DTOs.Auth;
 using AnosheCms.Application.Interfaces;
 using AnosheCms.Domain.Entities;
 using AnosheCms.Infrastructure.Persistence.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration; // (برای IConfiguration)
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
@@ -54,8 +56,7 @@ namespace AnosheCms.Infrastructure.Services
 
             var (accessToken, refreshToken, jwtId) = await _tokenService.GenerateTokensAsync(user, ipAddress, userAgent);
 
-            // --- (این فراخوانی باعث خطا شده بود) ---
-            await LogLoginHistory(user.Id, ipAddress, userAgent, true, null); // (ارسال null)
+            await LogLoginHistory(user.Id, ipAddress, userAgent, true, null);
             await CreateSession(user.Id, jwtId.ToString(), refreshToken, ipAddress, userAgent);
 
             return await SuccessResult(user, accessToken, refreshToken);
@@ -130,14 +131,13 @@ namespace AnosheCms.Infrastructure.Services
                 IpAddress = ipAddress,
                 UserAgent = userAgent,
                 IsSuccessful = isSuccessful,
-                // ---*** (تصحیح شد: اطمینان از عدم وجود null) ***---
                 FailureReason = failureReason ?? string.Empty,
                 Browser = "Unknown",
                 OS = "Unknown",
                 Device = "Unknown"
             };
             await _context.UserLoginHistories.AddAsync(history);
-            await _context.SaveChangesAsync(); // (این خطی بود که خطا می‌داد)
+            await _context.SaveChangesAsync();
         }
 
         private async Task CreateSession(Guid userId, string jwtId, string refreshToken, string ipAddress, string userAgent)
@@ -163,7 +163,8 @@ namespace AnosheCms.Infrastructure.Services
             return new AuthenticationResult
             {
                 Succeeded = true,
-                Token = accessToken,
+                // (اصلاح شد: استفاده از AccessToken)
+                AccessToken = accessToken,
                 RefreshToken = refreshToken,
                 UserId = user.Id,
                 Email = user.Email,

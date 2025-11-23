@@ -39,5 +39,14 @@ namespace AnosheCms.Domain.Constants
         public const string EditForms = "Permissions.Forms.Edit";
         public const string DeleteForms = "Permissions.Forms.Delete";
         public const string ViewSubmissions = "Permissions.Forms.ViewSubmissions";
+
+        public const string ManageRoles = "Permissions.ManageRoles";
+        public const string ManageMedia = "Permissions.ManageMedia";
+        public const string ManageContentTypes = "Permissions.ManageContentTypes";
+        public const string ManageContentEntries = "Permissions.ManageContentEntries";
+        public const string ManageSettings = "Permissions.ManageSettings";
+        public const string ManageForms = "Permissions.ManageForms";
+
+
     }
 }

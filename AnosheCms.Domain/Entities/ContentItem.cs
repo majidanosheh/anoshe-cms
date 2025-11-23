@@ -1,31 +1,25 @@
-﻿// File: AnosheCms.Domain/Entities/ContentItem.cs
-using AnosheCms.Domain.Common;
+﻿using AnosheCms.Domain.Common;
 using System;
-using System.Collections.Generic; // برای Dictionary
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace AnosheCms.Domain.Entities
 {
-    /// <summary>
-    /// نگه‌دارنده یک آیتم محتوای واقعی (مانند یک پست وبلاگ خاص)
-    /// </summary>
-    public class ContentItem : AuditableBaseEntity
+    public class ContentItem : AuditableBaseEntity, ISoftDelete
     {
-        /// <summary>
-        /// این آیتم به کدام نوع محتوا تعلق دارد
-        /// </summary>
+        [Key]
+        public Guid Id { get; set; }
+
         public Guid ContentTypeId { get; set; }
+
+        [ForeignKey("ContentTypeId")]
         public virtual ContentType ContentType { get; set; }
 
-        /// <summary>
-        /// وضعیت انتشار (Draft, Published, Archived)
-        /// </summary>
-        public string Status { get; set; }
+        // (اصلاح شد: فیلد DataJson که ارور می‌داد اضافه شد)
+        public string DataJson { get; set; } // JSON string storing dynamic data
 
-        /// <summary>
-        /// داده‌های داینامیک این آیتم که به صورت JSON ذخیره می‌شوند.
-        /// ما از Dictionary برای کار آسان با JSON در C# استفاده می‌کنیم.
-        /// </summary>
-        public Dictionary<string, object> ContentData { get; set; } = new Dictionary<string, object>();
+        public string Status { get; set; } // Published, Draft, Archived
 
+        public bool IsDeleted { get; set; }
     }
 }

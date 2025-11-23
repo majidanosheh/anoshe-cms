@@ -1,4 +1,6 @@
-﻿// File: Api/Controllers/AdminNavigationController.cs
+﻿// AnosheCms/Api/Controllers/AdminNavigationController.cs
+// FULL REWRITE
+
 using AnosheCms.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -6,9 +8,9 @@ using System.Threading.Tasks;
 
 namespace AnosheCms.Api.Controllers
 {
-    [ApiController]
     [Route("api/admin/navigation")]
-    [Authorize] // (کاربر باید لاگین باشد)
+    [ApiController]
+    [Authorize]
     public class AdminNavigationController : ControllerBase
     {
         private readonly INavigationService _navigationService;
@@ -18,12 +20,21 @@ namespace AnosheCms.Api.Controllers
             _navigationService = navigationService;
         }
 
-        // GET: /api/admin/navigation/menu
         [HttpGet("menu")]
-        public async Task<IActionResult> GetAdminMenu()
+        public async Task<IActionResult> GetMenu()
         {
-            var menu = await _navigationService.GetAdminMenuAsync();
-            return Ok(menu);
+            var menuItems = await _navigationService.GetAdminMenuAsync();
+            return Ok(menuItems);
         }
+
+        ////// (متد تست برای اطمینان خاطر - بعداً می‌توانید حذف کنید)
+        ////[HttpGet("test")]
+        ////[AllowAnonymous]
+        ////public async Task<IActionResult> TestMenu()
+        ////{
+        ////    // نکته: در حالت Anonymous، سرویس منوی خالی برمی‌گرداند چون کاربر ندارد.
+        ////    // این متد فقط برای چک کردن زنده بودن کنترلر است.
+        ////    return Ok(new { Status = "Controller is Alive" });
+        ////}
     }
 }

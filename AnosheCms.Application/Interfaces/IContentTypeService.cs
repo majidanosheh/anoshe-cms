@@ -7,13 +7,22 @@ namespace AnosheCms.Application.Interfaces
 {
     public interface IContentTypeService
     {
-        Task<ContentTypeDto?> CreateContentTypeAsync(CreateContentTypeDto dto);
-        Task<ContentTypeDto?> GetContentTypeBySlugAsync(string apiSlug);
         Task<List<ContentTypeDto>> GetAllContentTypesAsync();
-        Task<bool> DeleteContentTypeAsync(Guid id);
-        Task<ContentFieldDto?> AddFieldToContentTypeAsync(Guid contentTypeId, CreateContentFieldDto dto);
 
-        // (اصلاح شد) نام متد برای مطابقت با کنترلر تغییر کرد
+        // متد جدید برای ویرایش
+        Task<ContentTypeDto> GetContentTypeByIdAsync(Guid id);
+
+        Task<ContentTypeDto?> GetContentTypeBySlugAsync(string apiSlug);
+
+        // تغییر خروجی به Guid برای هماهنگی با کنترلر
+        Task<Guid> CreateContentTypeAsync(CreateContentTypeDto dto);
+
+        // متد جدید برای آپدیت
+        Task UpdateContentTypeAsync(Guid id, CreateContentTypeDto dto);
+
+        Task<bool> DeleteContentTypeAsync(Guid id);
+
+        Task<ContentFieldDto?> AddFieldToContentTypeAsync(Guid contentTypeId, CreateContentFieldDto dto);
         Task<bool> DeleteContentFieldAsync(Guid contentTypeId, Guid fieldId);
     }
 }

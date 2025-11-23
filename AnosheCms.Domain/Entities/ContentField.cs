@@ -1,45 +1,38 @@
-﻿// File: AnosheCms.Domain/Entities/ContentField.cs
-using AnosheCms.Domain.Common;
+﻿using AnosheCms.Domain.Common;
 using System;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace AnosheCms.Domain.Entities
 {
-    /// <summary>
-    /// تعریف کننده یک فیلد خاص در یک ContentType
-    /// </summary>
-    public class ContentField : AuditableBaseEntity
+    public class ContentField : BaseEntity, ISoftDelete
     {
-        /// <summary>
-        /// نام قابل خواندن فیلد (مثلاً: عنوان اصلی)
-        /// </summary>
-        public string Name { get; set; }
+        [Key]
+        public Guid Id { get; set; }
 
-        /// <summary>
-        /// نام فنی فیلد برای استفاده در JSON (مثلاً: title)
-        /// </summary>
-        public string ApiSlug { get; set; }
-
-        /// <summary>
-        /// نوع داده فیلد (Text, RichText, Number, Boolean, DateTime, Media, Relation)
-        /// </summary>
-        public string FieldType { get; set; }
-
-        /// <summary>
-        /// آیا این فیلد اجباری است؟
-        /// </summary>
-        public bool IsRequired { get; set; } = false;
-
-        /// <summary>
-        
-        /// </summary>
-        public string? Settings { get; set; }
-
-        /// <summary>
-        /// این فیلد به کدام ContentType تعلق دارد
-        /// </summary>
         public Guid ContentTypeId { get; set; }
+
+        [ForeignKey("ContentTypeId")]
         public virtual ContentType ContentType { get; set; }
 
+        [Required]
+        [StringLength(100)]
+        public string Name { get; set; } // نام سیستمی (مثلاً price)
 
+        // (اصلاح شد: فیلدهای Label, Order, Options اضافه شدند)
+        [Required]
+        [StringLength(200)]
+        public string Label { get; set; } // نام نمایشی (مثلاً قیمت محصول)
+
+        [Required]
+        public string FieldType { get; set; } // Text, Number, Image, ...
+
+        public int Order { get; set; } // ترتیب نمایش
+
+        public bool IsRequired { get; set; }
+
+        public string? Options { get; set; } // JSON options (مثلاً گزینه‌های Dropdown)
+
+        public bool IsDeleted { get; set; }
     }
 }

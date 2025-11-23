@@ -1,4 +1,6 @@
-﻿// مسیر: Api/Startup.cs
+﻿// AnosheCms/Api/Startup.cs
+// FULL REWRITE
+
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -21,6 +23,7 @@ using AnosheCms.Api.Authorization;
 using AnosheCms.Domain.Constants;
 using System.Reflection;
 using System.Linq;
+using AnosheCms.Domain.Settings;
 
 namespace AnosheCms.Api
 {
@@ -37,6 +40,8 @@ namespace AnosheCms.Api
 
         public void ConfigureServices(IServiceCollection services)
         {
+            services.Configure<JwtSettings>(Configuration.GetSection("JwtSettings"));
+
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")
                     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.")));
@@ -57,7 +62,6 @@ namespace AnosheCms.Api
 
             services.AddHttpContextAccessor();
 
-            // ---*** (ثبت سرویس‌های پروژه) ***---
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddScoped<ITokenService, TokenService>();
             services.AddScoped<IAuthService, AuthService>();
@@ -69,12 +73,8 @@ namespace AnosheCms.Api
             services.AddScoped<ISettingsService, SettingsService>();
             services.AddScoped<IAccountService, AccountService>();
             services.AddScoped<IEmailService, LoggingEmailService>();
-
-            // --- (سرویس‌های جدید فاز ۳.۱ - بازنگری‌شده) ---
             services.AddScoped<IFormService, FormService>();
             services.AddScoped<ISubmissionService, SubmissionService>();
-
-            // ---*** (پایان بخش سرویس‌ها) ***---
 
             services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
 
@@ -101,7 +101,6 @@ namespace AnosheCms.Api
                 };
             });
 
-            // (ثبت Policy ها - به صورت خودکار دسترسی‌های جدید Forms را اضافه می‌کند)
             services.AddAuthorization(options =>
             {
                 var permissionType = typeof(Permissions);
@@ -115,15 +114,22 @@ namespace AnosheCms.Api
                     options.AddPolicy(permission, policy =>
                         policy.AddRequirements(new PermissionRequirement(permission)));
                 }
-
                 options.AddPolicy("SuperAdminOnly", policy => policy.RequireRole("SuperAdmin"));
             });
 
-            services.AddControllers();
-            services.AddEndpointsApiExplorer();
+            
+            services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // این تنظیم تضمین می‌کند که تمام خروجی‌های JSON با حروف کوچک شروع شوند
+        // (Title -> title, Icon -> icon)
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.DictionaryKeyPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    });
 
             services.AddSwaggerGen(c =>
             {
+
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "AnosheCms API", Version = "v1" });
                 c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {
@@ -153,7 +159,8 @@ namespace AnosheCms.Api
                     {
                         builder.WithOrigins("http://localhost:5173")
                                .AllowAnyHeader()
-                               .AllowAnyMethod();
+                               .AllowAnyMethod()
+                               .AllowCredentials();
                     });
             });
         }
@@ -168,6 +175,10 @@ namespace AnosheCms.Api
             }
 
             app.UseStaticFiles();
+
+            // --- (اصلاح شد: HTTPS Redirection حذف شد) ---
+            // app.UseHttpsRedirection(); 
+
             app.UseRouting();
             app.UseCors(_corsPolicyName);
 

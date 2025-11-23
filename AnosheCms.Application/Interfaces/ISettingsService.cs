@@ -1,13 +1,12 @@
-﻿// File: AnosheCms.Application/Interfaces/ISettingsService.cs
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace AnosheCms.Application.Interfaces
 {
     public interface ISettingsService
     {
-        Task<(Dictionary<string, object>? Data, string? ErrorMessage)> GetSettingsAsync(string contentTypeSlug);
-        Task<(Dictionary<string, object>? Data, string? ErrorMessage)> UpdateSettingsAsync(string contentTypeSlug, Dictionary<string, object> data, Guid userId);
+        // حذف Tupleهای قدیمی و استفاده از متدهای ساده
+        Task<Dictionary<string, string>> GetAllSettingsAsync();
+        Task UpdateSettingsAsync(Dictionary<string, string> settings);
     }
 }
