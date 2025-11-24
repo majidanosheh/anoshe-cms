@@ -27,7 +27,6 @@ namespace AnosheCms.Api.Controllers
             var settings = await _settingsService.GetAllSettingsAsync();
             return Ok(settings);
         }
-
         [HttpPost]
         [Authorize(Policy = Permissions.ManageSettings)]
         public async Task<IActionResult> UpdateSettings([FromBody] Dictionary<string, string> settings)
