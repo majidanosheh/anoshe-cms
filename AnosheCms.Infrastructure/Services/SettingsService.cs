@@ -1,7 +1,6 @@
 ﻿using AnosheCms.Application.Interfaces;
 using AnosheCms.Infrastructure.Persistence.Data;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+
 
 namespace AnosheCms.Infrastructure.Services
 {
@@ -16,8 +15,7 @@ namespace AnosheCms.Infrastructure.Services
 
         public async Task<Dictionary<string, string>> GetAllSettingsAsync()
         {
-            // فعلاً برای رفع ارور، یک دیکشنری ساده برمی‌گردانیم
-            // (بعداً می‌توانیم به دیتابیس وصل کنیم)
+            // فعلاً برای تست، دیتای ثابت برمی‌گردانیم تا سیستم بالا بیاید
             return new Dictionary<string, string>
             {
                 { "SiteTitle", "Anoshe CMS" },
@@ -27,7 +25,7 @@ namespace AnosheCms.Infrastructure.Services
 
         public async Task UpdateSettingsAsync(Dictionary<string, string> settings)
         {
-            // منطق ذخیره (فعلاً خالی برای رفع ارور)
+            // اینجا باید لاجیک ذخیره در دیتابیس نوشته شود
             await Task.CompletedTask;
         }
     }

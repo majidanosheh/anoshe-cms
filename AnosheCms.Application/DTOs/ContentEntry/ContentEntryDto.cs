@@ -15,7 +15,6 @@ namespace AnosheCms.Application.DTOs.ContentEntry
 
         public ContentEntryDto() { }
 
-        // سازنده‌ای که سرویس استفاده می‌کند
         public ContentEntryDto(Guid id, Guid contentTypeId, string status, DateTime createdDate, string? createdBy, DateTime? lastModifiedDate, Dictionary<string, object> contentData)
         {
             Id = id;

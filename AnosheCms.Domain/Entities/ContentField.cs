@@ -17,22 +17,26 @@ namespace AnosheCms.Domain.Entities
 
         [Required]
         [StringLength(100)]
-        public string Name { get; set; } // نام سیستمی (مثلاً price)
+        public string Name { get; set; }
 
-        // (اصلاح شد: فیلدهای Label, Order, Options اضافه شدند)
+        // (فیلدهای جدید که ارور می‌دادند)
         [Required]
         [StringLength(200)]
-        public string Label { get; set; } // نام نمایشی (مثلاً قیمت محصول)
+        public string Label { get; set; }
 
         [Required]
-        public string FieldType { get; set; } // Text, Number, Image, ...
+        public string FieldType { get; set; }
 
-        public int Order { get; set; } // ترتیب نمایش
+        public int Order { get; set; }
 
         public bool IsRequired { get; set; }
 
-        public string? Options { get; set; } // JSON options (مثلاً گزینه‌های Dropdown)
+        public string? Options { get; set; }
 
+        // (پیاده‌سازی ISoftDelete)
         public bool IsDeleted { get; set; }
+        public DateTime? DeletedDate { get; set; }
+        public Guid? DeletedBy { get; set; }
+        public object ApiSlug { get; set; }
     }
 }
