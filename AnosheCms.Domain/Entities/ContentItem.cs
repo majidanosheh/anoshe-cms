@@ -15,11 +15,11 @@ namespace AnosheCms.Domain.Entities
         [ForeignKey("ContentTypeId")]
         public virtual ContentType ContentType { get; set; }
 
-        // (اصلاح شد: فیلد DataJson که ارور می‌داد اضافه شد)
-        public string DataJson { get; set; } // JSON string storing dynamic data
+        public string DataJson { get; set; } 
 
-        public string Status { get; set; } // Published, Draft, Archived
+        public string Status { get; set; } 
 
         public bool IsDeleted { get; set; }
+        public object ContentData { get; set; }
     }
 }

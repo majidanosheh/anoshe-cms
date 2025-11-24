@@ -1,12 +1,10 @@
-﻿using AnosheCms.Application.DTOs.ContentEntry;
+﻿using AnosheCms.Application.DTOs.Common;
+using AnosheCms.Application.DTOs.ContentEntry;
 using AnosheCms.Application.Interfaces;
 using AnosheCms.Domain.Entities;
 using AnosheCms.Infrastructure.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+
 
 namespace AnosheCms.Infrastructure.Services
 {
@@ -76,28 +74,54 @@ namespace AnosheCms.Infrastructure.Services
             var item = await _context.ContentItems.FindAsync(id);
             if (item != null)
             {
-                // Soft Delete (توسط Context هندل می‌شود یا دستی)
                 _context.ContentItems.Remove(item);
                 await _context.SaveChangesAsync();
             }
         }
 
+        public async Task<List<ContentEntryDto>> GetPublishedContentEntriesAsync(string apiSlug)
+        {
+            // فقط آیتم‌هایی که وضعیتشان "Published" است و حذف نشده‌اند
+            var items = await _context.ContentItems
+                .AsNoTracking()
+                .Where(i => i.ContentType.ApiSlug == apiSlug && i.Status == "Published" && !i.IsDeleted)
+                .OrderByDescending(i => i.CreatedDate)
+                .ToListAsync();
+
+            return items.Select(MapToDto).ToList();
+        }
+
+        public async Task<ContentEntryDto?> GetPublishedContentEntryAsync(string apiSlug, string itemIdentifier)
+        {
+            // تلاش برای پیدا کردن آیتم با شناسه (Guid)
+            if (Guid.TryParse(itemIdentifier, out Guid id))
+            {
+                var item = await _context.ContentItems
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(i => i.Id == id && i.ContentType.ApiSlug == apiSlug && i.Status == "Published" && !i.IsDeleted);
+                return item == null ? null : MapToDto(item);
+            }
+
+            // (در آینده می‌توان منطق پیدا کردن با Slug را هم اینجا اضافه کرد)
+            return null;
+        }
+
         private ContentEntryDto MapToDto(ContentItem item)
         {
-            // تبدیل JSON استرینگ به دیکشنری
             var data = string.IsNullOrEmpty(item.DataJson)
                 ? new Dictionary<string, object>()
                 : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(item.DataJson);
 
-            return new ContentEntryDto(
-                item.Id,
-                item.ContentTypeId,
-                item.Status,
-                item.CreatedDate,
-                item.CreatedBy?.ToString(),
-                item.LastModifiedDate,
-                data
-            );
+            return new ContentEntryDto
+            {
+                Id = item.Id,
+                ContentTypeId = item.ContentTypeId,
+                Status = item.Status,
+                CreatedDate = item.CreatedDate,
+                CreatedBy = item.CreatedBy?.ToString(),
+                LastModifiedDate = item.LastModifiedDate,
+                ContentData = data
+            };
         }
     }
 }

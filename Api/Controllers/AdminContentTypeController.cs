@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 namespace AnosheCms.Api.Controllers
 {
     [ApiController]
-    [Route("api/content-type-admin")] // (مسیر صحیح بر اساس Store فرانت‌اند)
+    [Route("api/admin/content-types")] // (مسیر هماهنگ با فرانت)
     [Authorize]
-    public class AdminContentTypeController : ControllerBase // (تغییر نام برای مطابقت با فایل شما)
+    public class AdminContentTypeController : ControllerBase
     {
         private readonly IContentTypeService _contentTypeService;
 
@@ -20,75 +20,45 @@ namespace AnosheCms.Api.Controllers
             _contentTypeService = contentTypeService;
         }
 
-        // GET: api/content-type-admin
         [HttpGet]
-        [Authorize(Policy = Permissions.ViewContentTypes)]
-        public async Task<IActionResult> GetAllContentTypes()
+        [Authorize(Policy = Permissions.ManageContentTypes)]
+        public async Task<IActionResult> GetAll()
         {
-            var result = await _contentTypeService.GetAllContentTypesAsync();
-            return Ok(result);
+            var types = await _contentTypeService.GetAllContentTypesAsync();
+            return Ok(types);
         }
 
-        // GET: api/content-type-admin/{apiSlug}
-        [HttpGet("{apiSlug}")]
-        [Authorize(Policy = Permissions.ViewContentTypes)]
-        public async Task<IActionResult> GetContentType(string apiSlug)
+        [HttpGet("{id}")]
+        [Authorize(Policy = Permissions.ManageContentTypes)]
+        public async Task<IActionResult> GetById(Guid id)
         {
-            var result = await _contentTypeService.GetContentTypeBySlugAsync(apiSlug);
-            if (result == null) return NotFound();
-            return Ok(result);
+            var type = await _contentTypeService.GetContentTypeByIdAsync(id);
+            if (type == null) return NotFound();
+            return Ok(type);
         }
 
-        // POST: api/content-type-admin
         [HttpPost]
-        [Authorize(Policy = Permissions.CreateContentTypes)]
-        public async Task<IActionResult> CreateContentType([FromBody] CreateContentTypeDto dto)
+        [Authorize(Policy = Permissions.ManageContentTypes)]
+        public async Task<IActionResult> Create([FromBody] CreateContentTypeDto request)
         {
-            var result = await _contentTypeService.CreateContentTypeAsync(dto);
-            if (result == null)
-            {
-                return BadRequest("Failed to create content type. ApiSlug might already exist.");
-            }
-            return CreatedAtAction(nameof(GetContentType), new { apiSlug = result.ApiSlug }, result);
+            var id = await _contentTypeService.CreateContentTypeAsync(request);
+            return CreatedAtAction(nameof(GetById), new { id }, id);
         }
 
-        // DELETE: api/content-type-admin/{id}
-        [HttpDelete("{id}")]
-        [Authorize(Policy = Permissions.DeleteContentTypes)]
-        public async Task<IActionResult> DeleteContentType(Guid id)
+        [HttpPut("{id}")]
+        [Authorize(Policy = Permissions.ManageContentTypes)]
+        public async Task<IActionResult> Update(Guid id, [FromBody] CreateContentTypeDto request)
         {
-            var success = await _contentTypeService.DeleteContentTypeAsync(id);
-            if (!success) return NotFound();
+            await _contentTypeService.UpdateContentTypeAsync(id, request);
             return NoContent();
         }
 
-        // POST: api/content-type-admin/{id}/fields
-        [HttpPost("{id}/fields")]
-        [Authorize(Policy = Permissions.EditContentTypes)]
-        public async Task<IActionResult> AddField(Guid id, [FromBody] CreateContentFieldDto dto)
+        [HttpDelete("{id}")]
+        [Authorize(Policy = Permissions.ManageContentTypes)]
+        public async Task<IActionResult> Delete(Guid id)
         {
-            var field = await _contentTypeService.AddFieldToContentTypeAsync(id, dto);
-            if (field == null)
-            {
-                return BadRequest("Failed to add field. Field ApiSlug might already exist.");
-            }
-            return Ok(field);
-        }
-
-        // DELETE: api/content-type-admin/{id}/fields/{fieldId}
-        [HttpDelete("{id}/fields/{fieldId}")] // (روت صحیح)
-        [Authorize(Policy = Permissions.EditContentTypes)]
-        // (اصلاح شد)
-        // این اکشن اکنون هر دو پارامتر 'id' (به عنوان contentTypeId) و 'fieldId'
-        // را از روت دریافت می‌کند
-        public async Task<IActionResult> DeleteContentField(Guid id, Guid fieldId)
-        {
-            // (اصلاح شد)
-            // هر دو پارامتر به سرویس ارسال می‌شوند
-            var success = await _contentTypeService.DeleteContentFieldAsync(id, fieldId);
-            if (!success) return NotFound();
-            return NoContent(); // (تغییر به NoContent برای هماهنگی با سایر اکشن‌های Delete)
+            await _contentTypeService.DeleteContentTypeAsync(id);
+            return NoContent();
         }
     }
 }
-

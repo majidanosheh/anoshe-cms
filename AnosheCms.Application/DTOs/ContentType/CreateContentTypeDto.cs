@@ -1,16 +1,18 @@
-﻿namespace AnosheCms.Application.DTOs.ContentType
+﻿using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+
+namespace AnosheCms.Application.DTOs.ContentType
 {
     public class CreateContentTypeDto
     {
+        [Required]
         public string Name { get; set; }
+
+        [Required]
         public string ApiSlug { get; set; }
 
-        // (جدید)
-        // سازنده‌ای که در SettingsService.cs فراخوانی شده است
-        public CreateContentTypeDto(string name, string apiSlug)
-        {
-            Name = name;
-            ApiSlug = apiSlug;
-        }
+        public string? Description { get; set; }
+
+        public List<CreateContentFieldDto> Fields { get; set; }
     }
 }

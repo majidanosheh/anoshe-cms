@@ -1,70 +1,88 @@
-﻿// File: Api/Controllers/AdminContentEntryController.cs
+﻿using AnosheCms.Application.DTOs.ContentEntry;
 using AnosheCms.Application.Interfaces;
+using AnosheCms.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Threading.Tasks;
-using AnosheCms.Domain.Constants;
-using AnosheCms.Application.DTOs.ContentEntry;
-using ContentEntryCreateDto = AnosheCms.Application.Interfaces.ContentEntryCreateDto; // <-- (جدید)
 
 namespace AnosheCms.Api.Controllers
 {
     [ApiController]
-    [Route("api/admin/content-entries/{apiSlug}")]
+    [Route("api/admin/content-items")] // (مسیر استاندارد شده)
     [Authorize]
     public class AdminContentEntryController : ControllerBase
     {
-        private readonly IContentEntryService _itemService;
-        public AdminContentEntryController(IContentEntryService itemService)
+        private readonly IContentEntryService _entryService;
+
+        public AdminContentEntryController(IContentEntryService entryService)
         {
-            _itemService = itemService;
+            _entryService = entryService;
         }
 
-        [HttpGet]
-        [Authorize(Policy = Permissions.ViewContent)] // <-- پالیسی اعمال شد
-        public async Task<IActionResult> GetItems(string apiSlug)
+        // GET: api/admin/content-items/{typeSlug}
+        [HttpGet("{typeSlug}")]
+        [Authorize(Policy = Permissions.ManageContentEntries)]
+        public async Task<IActionResult> GetItems(string typeSlug, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
-            var result = await _itemService.GetContentEntriesAsync(apiSlug);
+            // (استفاده از متد جدید با صفحه‌بندی)
+            var result = await _entryService.GetEntriesAsync(typeSlug, page, pageSize);
             return Ok(result);
         }
 
-        [HttpGet("{itemId}")]
-        [Authorize(Policy = Permissions.ViewContent)] // <-- پالیسی اعمال شد
-        public async Task<IActionResult> GetItemById(string apiSlug, Guid itemId)
+        // GET: api/admin/content-items/{typeSlug}/{id}
+        [HttpGet("{typeSlug}/{id}")]
+        [Authorize(Policy = Permissions.ManageContentEntries)]
+        public async Task<IActionResult> GetItem(string typeSlug, Guid id)
         {
-            var result = await _itemService.GetContentEntryByIdAsync(apiSlug, itemId);
-            if (result == null) return NotFound();
-            return Ok(result);
+            var item = await _entryService.GetEntryByIdAsync(id);
+            if (item == null) return NotFound();
+            return Ok(item);
         }
 
-        [HttpPost]
-        [Authorize(Policy = Permissions.CreateContent)] // <-- پالیسی اعمال شد
-        public async Task<IActionResult> CreateItem(string apiSlug, [FromBody] ContentEntryCreateDto dto)
+        // POST: api/admin/content-items/{typeSlug}
+        [HttpPost("{typeSlug}")]
+        [Authorize(Policy = Permissions.ManageContentEntries)]
+        public async Task<IActionResult> Create(string typeSlug, [FromBody] ContentEntryCreateDto request)
         {
-            var (result, error) = await _itemService.CreateContentEntryAsync(apiSlug, dto);
-            if (error != null) return BadRequest(new { message = error });
-            return CreatedAtAction(nameof(GetItemById), new { apiSlug = apiSlug, itemId = result.Id }, result);
+            try
+            {
+                // (اصلاح شد: متد جدید CreateEntryAsync خروجی Guid می‌دهد، نه Tuple)
+                var id = await _entryService.CreateEntryAsync(typeSlug, request);
+                // (برگرداندن ID در پاسخ برای استفاده فرانت‌اند)
+                return Ok(new { Id = id });
+            }
+            catch (Exception ex)
+            {
+                // (مدیریت خطا: اگر سرویس خطا داد، آن را به فرانت برمی‌گردانیم)
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
-        [HttpPut("{itemId}")]
-        [Authorize(Policy = Permissions.EditContent)] // <-- پالیسی اعمال شد
-        public async Task<IActionResult> UpdateItem(string apiSlug, Guid itemId, [FromBody] ContentEntryCreateDto dto)
+        // PUT: api/admin/content-items/{typeSlug}/{id}
+        [HttpPut("{typeSlug}/{id}")]
+        [Authorize(Policy = Permissions.ManageContentEntries)]
+        public async Task<IActionResult> Update(string typeSlug, Guid id, [FromBody] ContentEntryCreateDto request)
         {
-            var (result, error) = await _itemService.UpdateContentEntryAsync(apiSlug, itemId, dto);
-            if (error != null) return BadRequest(new { message = error });
-            if (result == null) return NotFound();
-            return Ok(result);
+            try
+            {
+                // (اصلاح شد: متد جدید UpdateEntryAsync خروجی ندارد)
+                await _entryService.UpdateEntryAsync(id, request);
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
-        [HttpDelete("{itemId}")]
-        [Authorize(Policy = Permissions.DeleteContent)] // <-- پالیسی اعمال شد
-        public async Task<IActionResult> DeleteItem(string apiSlug, Guid itemId)
+        // DELETE: api/admin/content-items/{typeSlug}/{id}
+        [HttpDelete("{typeSlug}/{id}")]
+        [Authorize(Policy = Permissions.ManageContentEntries)]
+        public async Task<IActionResult> Delete(string typeSlug, Guid id)
         {
-            var success = await _itemService.DeleteContentEntryAsync(apiSlug, itemId);
-            if (!success) return NotFound();
-            return Ok(new { message = "آیتم با موفقیت حذف شد." });
+            await _entryService.DeleteEntryAsync(id);
+            return NoContent();
         }
     }
 }
-

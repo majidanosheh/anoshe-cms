@@ -3,10 +3,6 @@ using AnosheCms.Application.Interfaces;
 using AnosheCms.Domain.Entities;
 using AnosheCms.Infrastructure.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace AnosheCms.Infrastructure.Services
 {
@@ -82,7 +78,6 @@ namespace AnosheCms.Infrastructure.Services
             contentType.Name = dto.Name;
             contentType.Description = dto.Description;
 
-            // بروزرسانی فیلدها (استراتژی جایگزینی ساده)
             _context.ContentFields.RemoveRange(contentType.Fields);
             contentType.Fields = dto.Fields?.Select((f, i) => new ContentField
             {
@@ -98,13 +93,14 @@ namespace AnosheCms.Infrastructure.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task<bool> DeleteContentTypeAsync(Guid id)
+        public async Task DeleteContentTypeAsync(Guid id)
         {
             var ct = await _context.ContentTypes.FindAsync(id);
-            if (ct == null) return false;
-            _context.ContentTypes.Remove(ct);
-            await _context.SaveChangesAsync();
-            return true;
+            if (ct != null)
+            {
+                _context.ContentTypes.Remove(ct);
+                await _context.SaveChangesAsync();
+            }
         }
 
         public async Task<ContentFieldDto?> AddFieldToContentTypeAsync(Guid contentTypeId, CreateContentFieldDto dto)
@@ -120,7 +116,7 @@ namespace AnosheCms.Infrastructure.Services
             };
             await _context.ContentFields.AddAsync(field);
             await _context.SaveChangesAsync();
-            return new ContentFieldDto { Id = field.Id, Name = field.Name, Label = field.Label, FieldType = field.FieldType };
+            return new ContentFieldDto { Id = field.Id, Name = field.Name, Label = field.Label, FieldType = field.FieldType, Options = field.Options };
         }
 
         public async Task<bool> DeleteContentFieldAsync(Guid contentTypeId, Guid fieldId)
