@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Controllers\AdminMediaController.cs" />
+    <!--<Compile Remove="Controllers\AdminMediaController.cs" />-->
   </ItemGroup>
 
   <ItemGroup>

@@ -13,7 +13,8 @@ namespace AnosheCms.Api.Controllers
 {
     [ApiController]
     [Route("api/admin/forms")]
-    [Authorize] // (مجوزهای کلی در سطح کنترلر)
+
+    [Authorize] 
     public class AdminFormController : ControllerBase
     {
         private readonly IFormService _formService;

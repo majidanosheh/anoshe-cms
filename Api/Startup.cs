@@ -1,7 +1,4 @@
-﻿// AnosheCms/Api/Startup.cs
-// FULL REWRITE
-
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,25 +20,19 @@ using AnosheCms.Api.Authorization;
 using AnosheCms.Domain.Constants;
 using System.Reflection;
 using System.Linq;
-using AnosheCms.Domain.Settings;
 
 namespace AnosheCms.Api
 {
     public class Startup
     {
         private readonly string _corsPolicyName = "AnosheCmsCorsPolicy";
-
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
         }
-
         public IConfiguration Configuration { get; }
-
         public void ConfigureServices(IServiceCollection services)
         {
-            services.Configure<JwtSettings>(Configuration.GetSection("JwtSettings"));
-
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")
                     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.")));
@@ -62,20 +53,20 @@ namespace AnosheCms.Api
 
             services.AddHttpContextAccessor();
 
+            // ثبت سرویس‌ها
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddScoped<ITokenService, TokenService>();
             services.AddScoped<IAuthService, AuthService>();
+            services.AddScoped<INavigationService, NavigationService>();
+            services.AddScoped<ISettingsService, SettingsService>();
+            services.AddScoped<IUserService, UserService>();
             services.AddScoped<IMediaService, MediaService>();
             services.AddScoped<IContentTypeService, ContentTypeService>();
             services.AddScoped<IContentEntryService, ContentEntryService>();
-            services.AddScoped<IUserService, UserService>();
-            services.AddScoped<INavigationService, NavigationService>();
-            services.AddScoped<ISettingsService, SettingsService>();
             services.AddScoped<IAccountService, AccountService>();
-            services.AddScoped<IEmailService, LoggingEmailService>();
             services.AddScoped<IFormService, FormService>();
             services.AddScoped<ISubmissionService, SubmissionService>();
-
+            services.AddScoped<IEmailService, LoggingEmailService>();
             services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
 
             services.AddAuthentication(options =>
@@ -87,17 +78,21 @@ namespace AnosheCms.Api
             {
                 var secretKey = Configuration["JwtSettings:Secret"]
                     ?? throw new InvalidOperationException("JWT Secret key is not configured.");
+                var issuer = Configuration["JwtSettings:Issuer"]
+                    ?? throw new InvalidOperationException("JWT Issuer is not configured.");
+                var audience = Configuration["JwtSettings:Audience"]
+                    ?? throw new InvalidOperationException("JWT Audience is not configured.");
 
                 o.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
                     ValidateIssuer = true,
-                    ValidIssuer = Configuration["JwtSettings:Issuer"],
+                    ValidIssuer = issuer,
                     ValidateAudience = true,
-                    ValidAudience = Configuration["JwtSettings:Audience"],
+                    ValidAudience = audience,
                     ValidateLifetime = true,
-                    ClockSkew = TimeSpan.Zero
+                    ClockSkew = TimeSpan.FromMinutes(2)
                 };
             });
 
@@ -117,19 +112,19 @@ namespace AnosheCms.Api
                 options.AddPolicy("SuperAdminOnly", policy => policy.RequireRole("SuperAdmin"));
             });
 
-            
             services.AddControllers()
     .AddJsonOptions(options =>
     {
-        // این تنظیم تضمین می‌کند که تمام خروجی‌های JSON با حروف کوچک شروع شوند
-        // (Title -> title, Icon -> icon)
+        // 1. جلوگیری از ارور 500 (حلقه‌های تو در تو)
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+
+        // 2. اجبار به استفاده از حروف کوچک (camelCase) برای هماهنگی با فرانت
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
         options.JsonSerializerOptions.DictionaryKeyPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
     });
-
+            services.AddEndpointsApiExplorer();
             services.AddSwaggerGen(c =>
             {
-
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "AnosheCms API", Version = "v1" });
                 c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {
@@ -140,27 +135,32 @@ namespace AnosheCms.Api
                     In = ParameterLocation.Header,
                     Description = "Enter 'Bearer' [space] and then your valid token"
                 });
-                c.AddSecurityRequirement(new OpenApiSecurityRequirement
-                {
+                c.AddSecurityRequirement(new OpenApiSecurityRequirement {
                     {
-                        new OpenApiSecurityScheme
-                        {
+                        new OpenApiSecurityScheme {
                             Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
                         },
                         new List<string>()
                     }
                 });
+
             });
 
+            
+            // *** FIX: آپدیت کردن CORS برای اجازه دسترسی به Live Server ***
             services.AddCors(options =>
             {
                 options.AddPolicy(name: _corsPolicyName,
                     builder =>
                     {
-                        builder.WithOrigins("http://localhost:5173")
+                        builder.WithOrigins(
+                                    "http://localhost:5173",
+                                    "http://localhost:8080",
+                                    "http://127.0.0.1:5500",
+                                    "http://localhost:5500"
+                                )
                                .AllowAnyHeader()
-                               .AllowAnyMethod()
-                               .AllowCredentials();
+                               .AllowAnyMethod();
                     });
             });
         }
@@ -175,13 +175,10 @@ namespace AnosheCms.Api
             }
 
             app.UseStaticFiles();
-
-            // --- (اصلاح شد: HTTPS Redirection حذف شد) ---
-            // app.UseHttpsRedirection(); 
-
             app.UseRouting();
-            app.UseCors(_corsPolicyName);
 
+            // ترتیب مهم است: اول CORS، بعد Auth
+            app.UseCors(_corsPolicyName);
             app.UseAuthentication();
             app.UseAuthorization();
 

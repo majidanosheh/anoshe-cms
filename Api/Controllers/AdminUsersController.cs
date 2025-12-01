@@ -6,14 +6,14 @@ using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using AnosheCms.Domain.Constants; // <-- (جدید)
+using AnosheCms.Domain.Constants; 
 
 namespace AnosheCms.Api.Controllers
 {
     [ApiController]
     [Route("api/admin/users")]
-    // [Authorize(Roles = "SuperAdmin")] // <-- حذف شد
-    [Authorize] // <-- عمومی اعمال شد
+    
+    [Authorize]
     public class AdminUsersController : ControllerBase
     {
         private readonly IUserService _userService;
@@ -26,7 +26,7 @@ namespace AnosheCms.Api.Controllers
         }
 
         [HttpGet]
-        [Authorize(Policy = Permissions.ViewUsers)] // <-- پالیسی اعمال شد
+        [Authorize(Policy = Permissions.ViewUsers)] 
         public async Task<IActionResult> GetAllUsers()
         {
             var users = await _userService.GetAllUsersAsync();
@@ -34,7 +34,7 @@ namespace AnosheCms.Api.Controllers
         }
 
         [HttpGet("{id}")]
-        [Authorize(Policy = Permissions.ViewUsers)] // <-- پالیسی اعمال شد
+        [Authorize(Policy = Permissions.ViewUsers)] 
         public async Task<IActionResult> GetUser(Guid id)
         {
             var user = await _userService.GetUserByIdAsync(id);
@@ -43,7 +43,7 @@ namespace AnosheCms.Api.Controllers
         }
 
         [HttpPost]
-        [Authorize(Policy = Permissions.CreateUsers)] // <-- پالیسی اعمال شد
+        [Authorize(Policy = Permissions.CreateUsers)] 
         public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
         {
             var (user, errors) = await _userService.CreateUserAsync(request, _currentUserService.UserId.Value);
@@ -55,7 +55,7 @@ namespace AnosheCms.Api.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize(Policy = Permissions.EditUsers)] // <-- پالیسی اعمال شد
+        [Authorize(Policy = Permissions.EditUsers)] 
         public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUserRequest request)
         {
             var (user, errors) = await _userService.UpdateUserAsync(id, request, _currentUserService.UserId.Value);
@@ -68,7 +68,7 @@ namespace AnosheCms.Api.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Policy = Permissions.DeleteUsers)] // <-- پالیسی اعمال شد
+        [Authorize(Policy = Permissions.DeleteUsers)] 
         public async Task<IActionResult> DeleteUser(Guid id)
         {
             var adminUserSeedId = Guid.Parse("d1a1b1c1-1111-4444-8888-d1a1b1c1e1f1");

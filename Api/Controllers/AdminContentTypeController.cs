@@ -9,8 +9,8 @@ using System.Threading.Tasks;
 namespace AnosheCms.Api.Controllers
 {
     [ApiController]
-    [Route("api/admin/content-types")] // (مسیر هماهنگ با فرانت)
-    [Authorize]
+    [Route("api/admin/content-types")] 
+    [Authorize(Policy = Permissions.ManageContentTypes)]
     public class AdminContentTypeController : ControllerBase
     {
         private readonly IContentTypeService _contentTypeService;

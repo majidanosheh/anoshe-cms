@@ -4,6 +4,7 @@ using AnosheCms.Infrastructure.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AnosheCms.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251201050547_AddFormBuilderTables")]
+    partial class AddFormBuilderTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -84,7 +87,7 @@ namespace AnosheCms.Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("a1b1c1d1-1111-4444-8888-a1b1c1d1e1f1"),
-                            CreatedDate = new DateTime(2025, 12, 1, 5, 25, 46, 931, DateTimeKind.Utc).AddTicks(3248),
+                            CreatedDate = new DateTime(2025, 12, 1, 5, 5, 47, 20, DateTimeKind.Utc).AddTicks(8045),
                             Description = "دسترسی کامل به تمام سیستم",
                             DisplayName = "سوپر ادمین",
                             IsDeleted = false,
@@ -95,7 +98,7 @@ namespace AnosheCms.Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("a2b2c2d2-2222-4444-8888-a2b2c2d2e2f2"),
-                            CreatedDate = new DateTime(2025, 12, 1, 5, 25, 46, 931, DateTimeKind.Utc).AddTicks(3251),
+                            CreatedDate = new DateTime(2025, 12, 1, 5, 5, 47, 20, DateTimeKind.Utc).AddTicks(8047),
                             Description = "دسترسی به بخش مدیریت محتوا و ساختار",
                             DisplayName = "ادمین",
                             IsDeleted = false,
@@ -106,7 +109,7 @@ namespace AnosheCms.Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("a3b3c3d3-3333-4444-8888-a3b3c3d3e3f3"),
-                            CreatedDate = new DateTime(2025, 12, 1, 5, 25, 46, 931, DateTimeKind.Utc).AddTicks(3252),
+                            CreatedDate = new DateTime(2025, 12, 1, 5, 5, 47, 20, DateTimeKind.Utc).AddTicks(8049),
                             Description = "دسترسی پایه (در صورت نیاز)",
                             DisplayName = "کاربر",
                             IsDeleted = false,
@@ -230,8 +233,8 @@ namespace AnosheCms.Infrastructure.Migrations
                         {
                             Id = new Guid("d1a1b1c1-1111-4444-8888-d1a1b1c1e1f1"),
                             AccessFailedCount = 0,
-                            ConcurrencyStamp = "8f9bc97a-a91d-48c8-ad39-72670884be38",
-                            CreatedDate = new DateTime(2025, 12, 1, 5, 25, 46, 931, DateTimeKind.Utc).AddTicks(3455),
+                            ConcurrencyStamp = "d5be2286-b28d-41d7-8afe-6187dff219b6",
+                            CreatedDate = new DateTime(2025, 12, 1, 5, 5, 47, 20, DateTimeKind.Utc).AddTicks(8309),
                             Email = "admin@system.com",
                             EmailConfirmed = true,
                             FirstName = "System",
@@ -241,9 +244,9 @@ namespace AnosheCms.Infrastructure.Migrations
                             LockoutEnabled = false,
                             NormalizedEmail = "ADMIN@SYSTEM.COM",
                             NormalizedUserName = "ADMIN@SYSTEM.COM",
-                            PasswordHash = "AQAAAAIAAYagAAAAEPS7RLjbXJzKrX5Ze9IHNKbtPhkURoeiFdunkW5tm/vrCeZ7fLQrCcr6CeyaksWseg==",
+                            PasswordHash = "AQAAAAIAAYagAAAAEBXewp4upzJZRA5775LDMoMGv1KFCntYKYAObesQo6NvKphvnv3rLKALzDsGKnkcWg==",
                             PhoneNumberConfirmed = false,
-                            SecurityStamp = "07b8d2fe-f5c4-44ae-810c-686c5c08e0a2",
+                            SecurityStamp = "c2174e4a-8ed0-4414-b742-0dfce562186b",
                             TwoFactorEnabled = false,
                             UserName = "admin@system.com"
                         });
@@ -274,13 +277,13 @@ namespace AnosheCms.Infrastructure.Migrations
                         {
                             UserId = new Guid("d1a1b1c1-1111-4444-8888-d1a1b1c1e1f1"),
                             RoleId = new Guid("a1b1c1d1-1111-4444-8888-a1b1c1d1e1f1"),
-                            AssignedAt = new DateTime(2025, 12, 1, 5, 25, 46, 995, DateTimeKind.Utc).AddTicks(6575)
+                            AssignedAt = new DateTime(2025, 12, 1, 5, 5, 47, 86, DateTimeKind.Utc).AddTicks(2121)
                         },
                         new
                         {
                             UserId = new Guid("d1a1b1c1-1111-4444-8888-d1a1b1c1e1f1"),
                             RoleId = new Guid("a2b2c2d2-2222-4444-8888-a2b2c2d2e2f2"),
-                            AssignedAt = new DateTime(2025, 12, 1, 5, 25, 46, 995, DateTimeKind.Utc).AddTicks(6576)
+                            AssignedAt = new DateTime(2025, 12, 1, 5, 5, 47, 86, DateTimeKind.Utc).AddTicks(2122)
                         });
                 });
 

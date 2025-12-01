@@ -9,7 +9,7 @@ namespace AnosheCms.Api.Controllers
 {
     [ApiController]
     [Route("api/admin/settings")]
-    [Authorize]
+    [Authorize(Policy = Permissions.ManageSettings)]
     public class AdminSettingsController : ControllerBase
     {
         private readonly ISettingsService _settingsService;

@@ -9,8 +9,8 @@ using System.Threading.Tasks;
 namespace AnosheCms.Api.Controllers
 {
     [ApiController]
-    [Route("api/admin/content-items")] // (مسیر استاندارد شده)
-    [Authorize]
+    [Route("api/admin/content-items")]
+    [Authorize(Policy = Permissions.ManageContentEntries)]
     public class AdminContentEntryController : ControllerBase
     {
         private readonly IContentEntryService _entryService;

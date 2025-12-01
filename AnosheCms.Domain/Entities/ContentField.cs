@@ -37,6 +37,11 @@ namespace AnosheCms.Domain.Entities
         public bool IsDeleted { get; set; }
         public DateTime? DeletedDate { get; set; }
         public Guid? DeletedBy { get; set; }
-        public object ApiSlug { get; set; }
+
+        [StringLength(100)]
+        public string ApiSlug { get; set; }
+
+
     }
 }
+

@@ -51,6 +51,10 @@ namespace AnosheCms.Infrastructure.Services
                 new Claim("family_name", user.LastName ?? "")
             };
 
+            // این خط باعث می‌شود اگر به کاربری دسترسی خاص دادید، اعمال شود
+            var userDirectClaims = await _userManager.GetClaimsAsync(user);
+            claims.AddRange(userDirectClaims.Where(c => c.Type == "Permission"));
+
             foreach (var userRole in userRoles)
             {
                 claims.Add(new Claim(ClaimTypes.Role, userRole));
