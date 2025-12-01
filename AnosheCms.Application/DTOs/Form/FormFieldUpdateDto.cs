@@ -36,5 +36,6 @@ namespace AnosheCms.Application.DTOs.Form
 
         public string? ValidationRules { get; set; }
         public string? ConditionalLogic { get; set; }
+        public string? Options { get; set; }
     }
 }

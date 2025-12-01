@@ -22,5 +22,6 @@ namespace AnosheCms.Application.DTOs.Form
         public string? Settings { get; set; }
         public string? ValidationRules { get; set; }
         public string? ConditionalLogic { get;set; }
+        public string? Options { get; set; }
     }
 }

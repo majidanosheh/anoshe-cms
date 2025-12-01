@@ -32,5 +32,6 @@ namespace AnosheCms.Application.DTOs.Form
         public string? HelpText { get; set; }
 
         public string? Settings { get; set; } // JSON
+        public string? Options { get; set; }
     }
 }

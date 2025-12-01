@@ -138,7 +138,8 @@ namespace AnosheCms.Infrastructure.Services
                 Order = request.Order,
                 Placeholder = request.Placeholder,
                 HelpText = request.HelpText,
-                Settings = request.Settings
+                Settings = request.Settings,
+                Options = request.Options
             };
 
             _context.FormFields.Add(formField);
@@ -166,6 +167,7 @@ namespace AnosheCms.Infrastructure.Services
             formField.HelpText = request.HelpText;
             formField.ValidationRules = request.ValidationRules;
             formField.ConditionalLogic = request.ConditionalLogic;
+            formField.Options = request.Options;
 
             _context.FormFields.Update(formField);
             await _context.SaveChangesAsync();
@@ -257,7 +259,8 @@ namespace AnosheCms.Infrastructure.Services
                 Placeholder = field.Placeholder,
                 HelpText = field.HelpText,
                 ValidationRules = field.ValidationRules,
-                ConditionalLogic = field.ConditionalLogic
+                ConditionalLogic = field.ConditionalLogic,
+                Options = field.Options,
             };
         }
         private FormDto MapToFormDto(Form form)

@@ -48,5 +48,7 @@ namespace AnosheCms.Domain.Entities
         public string? Settings { get; set; } // JSON (e.g., Options for Radio/Dropdown)
 
         public bool IsDeleted { get; set; }
+
+        public string? Options { get; set; } // برای ذخیره گزینه‌های Dropdown/Radio (با کاما یا خط جدید)
     }
 }
