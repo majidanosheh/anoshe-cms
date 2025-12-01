@@ -19,22 +19,29 @@ namespace AnosheCms.Infrastructure.Services
             _context = context;
         }
 
-        // --- Form CRUD (Implementations) ---
-
         public async Task<FormDto> GetFormByIdAsync(Guid id)
         {
+            // دریافت انتیتی از دیتابیس به همراه فیلدها
             var form = await _context.Forms
                 .AsNoTracking()
-                .Where(f => f.Id == id) 
-                .Select(f => new FormDto
-                {
-                    Id = f.Id,
-                    Name = f.Name,
-                    ApiSlug = f.ApiSlug
-                })
-                .FirstOrDefaultAsync();
+                .Include(f => f.Fields)
+                .FirstOrDefaultAsync(f => f.Id == id);
 
-            return form;
+            if (form == null) return null;
+
+            // 2. تبدیل دستی به DTO (چون AutoMapper شاید کانفیگ نباشد)
+            return new FormDto
+            {
+                Id = form.Id,
+                Name = form.Name,
+                ApiSlug = form.ApiSlug,
+                // لیست فیلدها را هم پر می‌کنیم
+                Fields = form.Fields
+                            .Where(f => !f.IsDeleted) // فقط فیلدهای حذف نشده
+                            .OrderBy(f => f.Order)    // مرتب‌سازی
+                            .Select(f => MapToFormFieldDto(f)) // استفاده از هلپر موجود در پایین همین فایل
+                            .ToList()
+            };
         }
 
         public async Task<List<FormDto>> GetAllFormsAsync()
@@ -59,7 +66,6 @@ namespace AnosheCms.Infrastructure.Services
 
             if (slugExists)
             {
-                // (اجازه ساخت نمی‌دهیم)
                 return null;
             }
 
@@ -67,11 +73,11 @@ namespace AnosheCms.Infrastructure.Services
             {
                 Name = request.Name,
                 ApiSlug = request.ApiSlug,
-                // (فیلدهای دیگر مانند SubmitButtonText مقادیر پیش‌فرض خود را در Domain می‌گیرند)
+                
             };
 
             _context.Forms.Add(form);
-            await _context.SaveChangesAsync(); // (Auditing خودکار در DbContext اجرا می‌شود)
+            await _context.SaveChangesAsync();
 
             return MapToFormDto(form);
         }
@@ -111,15 +117,12 @@ namespace AnosheCms.Infrastructure.Services
             return true;
         }
 
-
-        // --- Fields (Implementations) ---
-
         public async Task<FormFieldDto> AddFieldToFormAsync(Guid formId, FormFieldCreateDto request)
         {
             var form = await _context.Forms.FindAsync(formId);
             if (form == null) return null;
 
-            // (بررسی عدم تکرار Name در *این* فرم)
+            //بررسی عدم تکرار این فیلد جاری
             bool nameExists = await _context.FormFields
                 .AnyAsync(f => f.FormId == formId && f.Name == request.Name);
 
@@ -175,15 +178,13 @@ namespace AnosheCms.Infrastructure.Services
             var field = await _context.FormFields.FindAsync(fieldId);
             if (field == null) return false;
 
-            _context.FormFields.Remove(field); // (Auditing خودکار -> Soft Delete)
+            _context.FormFields.Remove(field); 
             await _context.SaveChangesAsync();
             return true;
         }
 
         public async Task<bool> UpdateFieldOrdersAsync(UpdateFieldOrdersRequest request)
         {
-            // (منطق تراکنشی که در پکیج قبلی پیاده‌سازی شد - بدون تغییر)
-            #region Batch Order Logic (Implemented)
             var dbFields = await _context.FormFields
                 .Where(f => f.FormId == request.FormId && f.IsDeleted == false)
                 .ToListAsync();
@@ -209,39 +210,39 @@ namespace AnosheCms.Infrastructure.Services
                 return true;
             }
             catch (Exception) { await transaction.RollbackAsync(); return false; }
-            #endregion
         }
 
-
-        // --- Public (Implemented) ---
         public async Task<PublicFormDto> GetFormBySlugAsync(string slug)
         {
-            // (منطق پیاده‌سازی شده در پکیج قبلی - بدون تغییر)
-            #region GetFormBySlug Logic (Implemented)
-            return await _context.Forms
+            // 1. دریافت اطلاعات خام از دیتابیس (بدون مپ کردن)
+            var form = await _context.Forms
                 .AsNoTracking()
                 .IgnoreQueryFilters()
+                .Include(f => f.Fields) // بارگذاری فیلدها
                 .Where(f => f.ApiSlug == slug && f.IsDeleted == false)
-                .Select(f => new PublicFormDto
-                {
-                    Id = f.Id,
-                    Name = f.Name,
-                    ApiSlug = f.ApiSlug,
-                    SubmitButtonText = f.SubmitButtonText,
-                    ConfirmationMessage = f.ConfirmationMessage,
-                    RedirectUrl = f.RedirectUrl,
-                    Fields = f.Fields
-                                .Where(field => field.IsDeleted == false)
-                                .OrderBy(field => field.Order)
-                                .Select(field => MapToFormFieldDto(field))
-                                .ToList()
-                })
                 .FirstOrDefaultAsync();
-            #endregion
+
+            if (form == null) return null;
+
+            // 2. تبدیل به DTO در حافظه (اینجا متد MapToFormFieldDto کار می‌کند)
+            return new PublicFormDto
+            {
+                Id = form.Id,
+                Name = form.Name,
+                ApiSlug = form.ApiSlug,
+                SubmitButtonText = form.SubmitButtonText,
+                ConfirmationMessage = form.ConfirmationMessage,
+                RedirectUrl = form.RedirectUrl,
+
+                // فیلتر کردن و مرتب‌سازی فیلدها در حافظه
+                Fields = form.Fields
+                            .Where(field => field.IsDeleted == false)
+                            .OrderBy(field => field.Order)
+                            .Select(field => MapToFormFieldDto(field)) // ✅ اینجا مجاز است
+                            .ToList()
+            };
         }
 
-
-        // --- Helper Mappers ---
         private FormFieldDto MapToFormFieldDto(FormField field)
         {
             return new FormFieldDto
