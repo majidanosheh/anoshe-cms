@@ -1,7 +1,4 @@
-﻿// AnosheCms/Application/DTOs/Form/FormFieldCreateDto.cs
-// NEW FILE
-
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace AnosheCms.Application.DTOs.Form
 {

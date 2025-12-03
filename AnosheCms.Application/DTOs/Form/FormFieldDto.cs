@@ -1,9 +1,4 @@
-﻿// AnosheCms/Application/DTOs/Form/FormFieldDto.cs
-// NEW FILE
-
-using System;
-
-namespace AnosheCms.Application.DTOs.Form
+﻿namespace AnosheCms.Application.DTOs.Form
 {
     public class FormFieldDto
     {

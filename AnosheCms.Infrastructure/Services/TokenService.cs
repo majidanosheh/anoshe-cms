@@ -1,5 +1,4 @@
-﻿// File: AnosheCms.Infrastructure/Services/TokenService.cs
-using AnosheCms.Application.Interfaces;
+﻿using AnosheCms.Application.Interfaces;
 using AnosheCms.Domain.Entities;
 using AnosheCms.Infrastructure.Persistence.Data;
 using Microsoft.AspNetCore.Identity;

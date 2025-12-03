@@ -20,6 +20,6 @@ namespace AnosheCms.Domain.Entities
         public string Status { get; set; } 
 
         public bool IsDeleted { get; set; }
-        public object ContentData { get; set; }
+        public Dictionary<string, object> ContentData { get; set; } = new Dictionary<string, object>();
     }
 }

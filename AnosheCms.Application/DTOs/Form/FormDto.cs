@@ -1,7 +1,4 @@
-﻿// AnosheCms/Application/DTOs/Form/FormDto.cs
-// NEW FILE
-
-using System;
+﻿using System;
 
 namespace AnosheCms.Application.DTOs.Form
 {

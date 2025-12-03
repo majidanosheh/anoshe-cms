@@ -1,8 +1,4 @@
-﻿// AnosheCms/Application/DTOs/Form/FormFieldUpdateDto.cs
-// FULL REWRITE
-
-using System;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace AnosheCms.Application.DTOs.Form
 {
@@ -26,10 +22,10 @@ namespace AnosheCms.Application.DTOs.Form
         public int Order { get; set; }
 
         [StringLength(500)]
-        public string? Placeholder { get; set; } // NEW (From Frontend Doc [cite: 4])
+        public string? Placeholder { get; set; } // NEW (From Frontend Doc)
 
         [StringLength(1000)]
-        public string? HelpText { get; set; } // NEW (From Frontend Doc [cite: 7])
+        public string? HelpText { get; set; } // NEW (From Frontend Doc )
 
         // (Settings شامل قوانین اعتبارسنجی و منطق شرطی از بخش ۳ سند فرانت‌اند [cite: 8, 9] خواهد بود)
         public string? Settings { get; set; } // JSON string for options, validations, etc.

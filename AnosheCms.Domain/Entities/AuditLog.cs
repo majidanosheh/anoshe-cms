@@ -1,5 +1,3 @@
-// File: AnosheCms.Domain/Entities/AuditLog.cs
-// (بر اساس 177.txt، بازنویسی‌شده برای Guid)
 using System;
 
 namespace AnosheCms.Domain.Entities
@@ -11,10 +9,11 @@ namespace AnosheCms.Domain.Entities
         public string Action { get; set; }
         public string EntityName { get; set; }
         public string EntityId { get; set; }
-        public string OldValues { get; set; }
-        public string NewValues { get; set; }
+        public string? OldValues { get; set; }
+        public string? NewValues { get; set; }
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
         public string IpAddress { get; set; }
         public string UserAgent { get; set; }
+
     }
 }

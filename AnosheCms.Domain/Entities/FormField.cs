@@ -1,7 +1,4 @@
-﻿// AnosheCms/Domain/Entities/FormField.cs
-// FULL REWRITE
-
-using AnosheCms.Domain.Common;
+﻿using AnosheCms.Domain.Common;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 

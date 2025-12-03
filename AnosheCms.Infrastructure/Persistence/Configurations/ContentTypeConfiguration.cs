@@ -13,6 +13,9 @@ namespace AnosheCms.Infrastructure.Persistence.Configurations
                 .IsRequired()
                 .HasMaxLength(100);
 
+            builder.HasIndex(ct => ct.ApiSlug)
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
             builder.Property(ct => ct.ApiSlug)
                 .IsRequired()
                 .HasMaxLength(100);

@@ -1,10 +1,6 @@
-﻿// --- شروع Using Directives ---
-using AnosheCms.Domain.Entities;
+﻿using AnosheCms.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using System.Collections.Generic;
-using System.Text.Json;
-// --- پایان Using Directives ---
 
 namespace AnosheCms.Infrastructure.Persistence.Configurations
 {
@@ -16,20 +12,17 @@ namespace AnosheCms.Infrastructure.Persistence.Configurations
                 .IsRequired()
                 .HasMaxLength(50);
 
-            // --- پیکربندی کلیدی JSON ---
-            builder.Property(ci => ci.ContentData)
-                .HasConversion(
-                    // تابع تبدیل C# (Dictionary) به دیتابیس (string)
-                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+            // ✅ این فیلد اصلی ماست که در دیتابیس ذخیره می‌شود
+            builder.Property(ci => ci.DataJson)
+                .IsRequired();
 
-                    // تابع تبدیل دیتابیس (string) به C# (Dictionary)
-                    v => JsonSerializer.Deserialize<Dictionary<string, object>>(v, (JsonSerializerOptions?)null) ?? new Dictionary<string, object>()
-                );
-            // --- خط .IsJson() در اینجا حذف شد ---
+            //  FIX: این فیلد دیکشنری را از دیتابیس حذف می‌کنیم تا ارور ندهد
+            // (چون ما دیتا را دستی در DataJson سریالایز می‌کنیم)
+            builder.Ignore(ci => ci.ContentData);
 
             // تعریف رابطه با ContentType
             builder.HasOne(ci => ci.ContentType)
-                .WithMany()
+                .WithMany() // اگر در ContentType کالکشن ندارید
                 .HasForeignKey(ci => ci.ContentTypeId)
                 .OnDelete(DeleteBehavior.Restrict);
 
