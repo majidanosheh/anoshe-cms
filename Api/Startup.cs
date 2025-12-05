@@ -68,6 +68,7 @@ namespace AnosheCms.Api
             services.AddScoped<ISubmissionService, SubmissionService>();
             services.AddScoped<IEmailService, LoggingEmailService>();
             services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
+            services.AddScoped<IAuditLogService, AuditLogService>();
 
             services.AddAuthentication(options =>
             {

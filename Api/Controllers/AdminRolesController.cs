@@ -88,7 +88,45 @@ namespace AnosheCms.Api.Controllers
             }
             return Ok(new { Message = "Permissions updated successfully." });
         }
+        [HttpPost]
+        [Authorize(Policy = Permissions.CreateRoles)]
+        public async Task<IActionResult> CreateRole([FromBody] CreateRoleDto request)
+        {
+            if (await _roleManager.RoleExistsAsync(request.Name))
+            {
+                return BadRequest(new { Message = "این نقش قبلاً وجود دارد." });
+            }
 
+            var role = new ApplicationRole
+            {
+                Name = request.Name,
+                DisplayName = request.DisplayName ?? request.Name,
+                IsSystemRole = false // نقش‌های دستی
+            };
+
+            var result = await _roleManager.CreateAsync(role);
+            if (!result.Succeeded) return BadRequest(result.Errors);
+
+            return Ok(new { Message = "نقش جدید با موفقیت ایجاد شد." });
+        }
+
+        [HttpDelete("{id}")]
+        [Authorize(Policy = Permissions.DeleteRoles)]
+        public async Task<IActionResult> DeleteRole(Guid id)
+        {
+            var role = await _roleManager.FindByIdAsync(id.ToString());
+            if (role == null) return NotFound();
+
+            if (role.IsSystemRole)
+            {
+                return BadRequest(new { Message = "امکان حذف نقش‌های سیستمی وجود ندارد." });
+            }
+
+            var result = await _roleManager.DeleteAsync(role);
+            if (!result.Succeeded) return BadRequest(result.Errors);
+
+            return Ok(new { Message = "نقش با موفقیت حذف شد." });
+        }
         private List<PermissionGroupDto> GetAllPermissionGroupsInternal()
         {
             return new List<PermissionGroupDto> {
@@ -142,8 +180,26 @@ namespace AnosheCms.Api.Controllers
                         new PermissionDto { Name = Permissions.DeleteRoles, Description = "حذف نقش‌ها" },
                         new PermissionDto { Name = Permissions.ManagePermissions, Description = "مدیریت دسترسی‌های نقش‌ها" }
                     }
+
+                },
+                new PermissionGroupDto {
+                    GroupName = "فرم‌ساز", Permissions = new List<PermissionDto> {
+                        new PermissionDto { Name = Permissions.ViewForms, Description = "مشاهده لیست فرم‌ها" },
+                        new PermissionDto { Name = Permissions.CreateForms, Description = "ساخت فرم جدید" },
+                        new PermissionDto { Name = Permissions.EditForms, Description = "ویرایش و طراحی فرم" },
+                        new PermissionDto { Name = Permissions.DeleteForms, Description = "حذف فرم" },
+                        new PermissionDto { Name = Permissions.ViewSubmissions, Description = "مشاهده ورودی‌ها" }
+                    } 
+                },
+                new PermissionGroupDto {
+                    GroupName = "نظارت و لاگ‌ها", Permissions = new List<PermissionDto> {
+                        // (این ثابت را باید در Permissions.cs اضافه کنیم)
+                        new PermissionDto { Name = "Permissions.Audit.View", Description = "مشاهده لاگ‌های سیستم" }
+                    }
                 }
             };
         }
+
+        
     }
 }
