@@ -7,5 +7,6 @@ namespace AnosheCms.Application.Interfaces
     public interface IAuditLogService
     {
         Task<PagedResult<AuditLogDto>> GetLogsAsync(int page, int pageSize);
+
     }
 }

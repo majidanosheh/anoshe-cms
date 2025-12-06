@@ -20,7 +20,8 @@ namespace AnosheCms.Infrastructure.Services
         public async Task<PagedResult<AuditLogDto>> GetLogsAsync(int page, int pageSize)
         {
             var query = _context.AuditLogs.AsNoTracking().OrderByDescending(a => a.Timestamp);
-            var total = await query.CountAsync();
+
+            var totalCount = await query.CountAsync();
 
             var items = await query
                 .Skip((page - 1) * pageSize)
@@ -28,8 +29,10 @@ namespace AnosheCms.Infrastructure.Services
                 .Select(a => new AuditLogDto
                 {
                     Id = a.Id,
-                    // واکشی نام کاربر از روی ID (ساب‌کوئری ساده)
-                    UserName = _context.Users.Where(u => u.Id == a.UserId).Select(u => u.UserName).FirstOrDefault() ?? "System/Unknown",
+                    // پیدا کردن نام کاربر از روی ID، اگر نبود "System"
+                    UserName = a.UserId.HasValue
+                        ? (_context.Users.Where(u => u.Id == a.UserId).Select(u => u.UserName).FirstOrDefault() ?? "Unknown")
+                        : "System",
                     Action = a.Action,
                     EntityName = a.EntityName,
                     EntityId = a.EntityId,
@@ -40,7 +43,11 @@ namespace AnosheCms.Infrastructure.Services
                 })
                 .ToListAsync();
 
-            return new PagedResult<AuditLogDto> { TotalCount = total, Items = items };
+            return new PagedResult<AuditLogDto>
+            {
+                TotalCount = totalCount,
+                Items = items
+            };
         }
     }
 }

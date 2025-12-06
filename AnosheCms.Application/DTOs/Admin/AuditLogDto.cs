@@ -13,5 +13,7 @@ namespace AnosheCms.Application.DTOs.Admin
         public string IpAddress { get; set; }
         public string? OldValues { get; set; }
         public string? NewValues { get; set; }
+
+
     }
 }
